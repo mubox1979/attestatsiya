@@ -37,9 +37,6 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 .btn-ghost:hover{background:var(--primary-l)}
 .btn-full{width:100%}
 .btn-sm{padding:7px 14px;font-size:12px}
-.btn:disabled{opacity:0.7;cursor:not-allowed}
-.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:#fff;animation:spin 0.8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
 .auth-link{text-align:center;margin-top:16px;font-size:13px;color:var(--muted)}
 .auth-link a{color:var(--primary);font-weight:700;cursor:pointer;text-decoration:none}
 .error-msg{background:#ffebee;color:var(--danger);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
@@ -178,6 +175,23 @@ tbody tr:hover{background:#f8fafc}
 .q-option{font-size:13px;padding:4px 8px;border-radius:6px}
 .q-option.correct{background:#e8f5e9;color:var(--success);font-weight:700}
 
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 3px solid rgba(255,255,255,.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:10px}
 </style>
@@ -200,7 +214,7 @@ tbody tr:hover{background:#f8fafc}
         <label>Parol</label>
         <input class="form-input" type="password" id="loginPassword" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()">
       </div>
-      <button id="loginBtn" class="btn btn-primary btn-full" onclick="doLogin()">Kirish</button>
+      <button class="btn btn-primary btn-full" id="btnLogin" onclick="doLogin()">Kirish</button>
       <div class="auth-link">Akkaunt yo'qmi? <a onclick="showPage('pageRegister')">Ro'yxatdan o'tish</a></div>
     </div>
   </div>
@@ -226,7 +240,7 @@ tbody tr:hover{background:#f8fafc}
         <label>Parol (kamida 6 belgi)</label>
         <input class="form-input" type="password" id="regPassword" placeholder="••••••">
       </div>
-      <button id="registerBtn" class="btn btn-primary btn-full" onclick="doRegister()">Ro'yxatdan o'tish</button>
+      <button class="btn btn-primary btn-full" id="btnRegister" onclick="doRegister()">Ro'yxatdan o'tish</button>
       <div class="auth-link">Akkaunt bormi? <a onclick="showPage('pageLogin')">Kirish</a></div>
     </div>
   </div>
@@ -619,12 +633,14 @@ function showTestInterface() {
 async function doLogin() {
   const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value;
-  const btn = document.getElementById('loginBtn');
   const errEl = document.getElementById('loginError');
+  const btn = document.getElementById('btnLogin');
   errEl.classList.remove('show');
+
   const originalText = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div>';
+
   try {
     const data = await api('POST', '/auth/login', { username, password });
     TOKEN = data.token;
@@ -644,12 +660,14 @@ async function doRegister() {
   const username = document.getElementById('regUsername').value.trim();
   const email = document.getElementById('regEmail').value.trim();
   const password = document.getElementById('regPassword').value;
-  const btn = document.getElementById('registerBtn');
   const errEl = document.getElementById('registerError');
+  const btn = document.getElementById('btnRegister');
   errEl.classList.remove('show');
+
   const originalText = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div>';
+
   try {
     const data = await api('POST', '/auth/register', { username, email, password });
     TOKEN = data.token;
