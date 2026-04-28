@@ -3,7 +3,7 @@ import { api } from '../api';
 import Navbar from './Navbar';
 import Modal from './Modal';
 
-const AdminPanel = ({ onLogout }) => {
+const AdminPanel = ({ onLogout, theme, onToggleTheme }) => {
   const [activeTab, setActiveTab] = useState('stats');
   const [stats, setStats] = useState(null);
   const [subjects, setSubjects] = useState([]);
@@ -83,7 +83,7 @@ const AdminPanel = ({ onLogout }) => {
 
   return (
     <div id="pageAdmin">
-      <Navbar brand="⚙️ Admin Panel" menuItems={menuItems} onLogout={onLogout} />
+      <Navbar brand="⚙️ Admin Panel" menuItems={menuItems} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
       <div className="container">
         {activeTab === 'stats' && stats && (
           <div id="adminTabStats">

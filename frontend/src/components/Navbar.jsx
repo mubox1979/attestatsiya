@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Navbar = ({ brand, menuItems, rightContent, onLogout }) => {
+const Navbar = ({ brand, menuItems, rightContent, onLogout, theme, onToggleTheme }) => {
   return (
     <nav className="navbar">
       <div className="navbar-brand">{brand}</div>
@@ -17,9 +17,16 @@ const Navbar = ({ brand, menuItems, rightContent, onLogout }) => {
       </div>
       <div className="navbar-right">
         {rightContent}
+
+        {onToggleTheme && (
+          <button className="theme-toggle" onClick={onToggleTheme} title="Mavzuni o'zgartirish">
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+        )}
+
         {onLogout && (
-          <div className="avatar" onClick={onLogout}>
-            ?
+          <div className="avatar" onClick={onLogout} title="Chiqish">
+            🚪
           </div>
         )}
       </div>

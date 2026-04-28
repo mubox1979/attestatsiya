@@ -1,24 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import Calculator from './Calculator';
 import Modal from './Modal';
 
-const TestInterface = ({ test, attemptId, initialQuestions, initialAnswers, initialFinished, onFinish, onBackToDashboard }) => {
-  const [questions, setQuestions] = useState(initialQuestions || []);
-  const [answers, setAnswers] = useState(initialAnswers || {});
-  const [curIdx, setCurIdx] = useState(0);
-  const [finished, setFinished] = useState(initialFinished || false);
-  const [timerSec, setTimerSec] = useState(test ? test.duration_minutes * 60 : 0);
+const TestInterface = ({ test, attemptId, initialQuestions, initialAnswers = {}, initialFinished = false, onFinish, onBackToDashboard }) => {
+  const [questions, setQuestions] = useState(initialQuestions);
+  const [answers, setAnswers] = useState(initialAnswers);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(test.duration_minutes * 60);
+  const [finished, setFinished] = useState(initialFinished);
   const [showCalc, setShowCalc] = useState(false);
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [result, setResult] = useState(null);
 
+  const timerRef = useRef(null);
+
   useEffect(() => {
-    let interval;
-    if (!finished && timerSec > 0) {
-      interval = setInterval(() => {
-        setTimerSec((prev) => {
+    if (!finished && !initialFinished && timeLeft > 0) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
           if (prev <= 1) {
+            clearInterval(timerRef.current);
             handleFinish();
             return 0;
           }
@@ -26,100 +28,113 @@ const TestInterface = ({ test, attemptId, initialQuestions, initialAnswers, init
         });
       }, 1000);
     }
-    return () => clearInterval(interval);
-  }, [finished, timerSec]);
+    return () => clearInterval(timerRef.current);
+  }, [finished, initialFinished]);
 
-  const handleFinish = async () => {
-    setShowFinishModal(false);
-    setFinished(true);
-    const finalAnswers = questions.map((q, i) => ({
-      question_id: q.id,
-      selected_option_id: answers[i]?.id || null
-    }));
+  const handleSelectOption = async (optionId) => {
+    if (finished) return;
+    const newAnswers = { ...answers, [currentIndex]: optionId };
+    setAnswers(newAnswers);
 
     try {
-      const res = await api('POST', `/tests/${test.id}/finish/${attemptId}`, { answers: finalAnswers });
-      setResult(res);
-    } catch (e) {
-      alert('Yakunlashda xatolik: ' + e.message);
-    }
+      await api('POST', `/tests/attempt/${attemptId}/answer`, {
+        question_id: questions[currentIndex].id,
+        option_id: optionId
+      });
+    } catch (e) { console.error(e); }
   };
 
-  const handleSelectOption = (opt) => {
-    if (finished) return;
-    setAnswers({ ...answers, [curIdx]: { id: opt.id, correct: opt.is_correct } });
+  const handleFinish = async () => {
+    try {
+      const data = await api('POST', `/tests/attempt/${attemptId}/finish`);
+      setResult(data);
+      setFinished(true);
+      setShowFinishModal(false);
+    } catch (e) { alert(e.message); }
   };
 
-  const pad = (n) => String(n).padStart(2, '0');
-  const h = Math.floor(timerSec / 3600), m = Math.floor((timerSec % 3600) / 60), s = timerSec % 60;
+  const formatTime = (s) => {
+    const m = Math.floor(s / 60);
+    const rs = s % 60;
+    return `${m}:${rs < 10 ? '0' : ''}${rs}`;
+  };
 
-  const timerClass = `timer-box ${timerSec <= 300 ? 'danger' : timerSec <= 600 ? 'warning' : ''}`;
-
-  const currentQ = questions[curIdx];
+  const currentQuestion = questions[currentIndex];
 
   return (
-    <div id="testInterface" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <div className="test-interface-root">
       <div className="test-topbar">
-        <div className="test-topbar-user">Foydalanuvchi</div>
-        <div style={{ fontWeight: 700, fontSize: '15px', opacity: 0.9 }}>{test?.title || 'Review'}</div>
-        <div className={timerClass} id="timerBox">
-          ⏱ <span>{finished ? '--:--:--' : `${pad(h)}:${pad(m)}:${pad(s)}`}</span>
+        <div className="navbar-brand">📝 {test.title}</div>
+        {!finished && (
+          <div className={`timer-box ${timeLeft < 300 ? 'warning' : ''}`}>
+            {formatTime(timeLeft)}
+          </div>
+        )}
+        <div className="navbar-right">
+          <button className="btn btn-sm btn-ghost" onClick={() => setShowCalc(!showCalc)}>🧮 Kalkulyator</button>
+          <button className="btn btn-sm btn-primary" onClick={onBackToDashboard}>Dashboard</button>
         </div>
       </div>
+
       <div className="test-main">
         <div className="test-left">
-          <div className="subject-label">📘 Savollar</div>
+          <div className="subject-label">Savollar</div>
           <div className="question-grid">
             {questions.map((_, i) => (
               <button
                 key={i}
-                className={`q-btn ${finished ? (answers[i] === undefined ? 'r-skip' : answers[i].correct ? 'r-correct' : 'r-wrong') : (answers[i] !== undefined ? 'answered' : '')} ${i === curIdx ? 'current' : ''}`}
-                onClick={() => setCurIdx(i)}
+                className={`q-btn ${currentIndex === i ? 'current' : ''} ${answers[i] ? 'answered' : ''}`}
+                onClick={() => setCurrentIndex(i)}
               >
                 {i + 1}
               </button>
             ))}
           </div>
+          <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
+            {!finished && (
+              <button className="btn btn-danger btn-full" onClick={() => setShowFinishModal(true)}>
+                Tugatish
+              </button>
+            )}
+          </div>
         </div>
+
         <div className="test-center">
           <div className="question-card">
-            <div className="question-header">
-              <span className="q-badge">Savol {curIdx + 1}</span>
-            </div>
-            <div className="question-body">
-              {currentQ?.image_url && (
-                <img src={currentQ.image_url} style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border)' }} alt="question" />
-              )}
-              <div className="question-text">{currentQ?.text}</div>
-              <div className="answers-list">
-                {currentQ?.options.map((opt) => (
-                  <div
-                    key={opt.id}
-                    className={`answer-opt ${finished ? (opt.is_correct ? 'opt-correct' : (answers[curIdx]?.id === opt.id ? 'opt-wrong' : 'opt-dim')) : (answers[curIdx]?.id === opt.id ? 'selected' : '')}`}
-                    onClick={() => handleSelectOption(opt)}
-                  >
-                    <div className="radio"></div>
-                    <span>{opt.text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="test-nav">
-            <button className="btn" style={{ background: '#e2e8f0' }} onClick={() => setCurIdx(Math.max(0, curIdx - 1))}>◀ Oldingi</button>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--muted)' }}>{curIdx + 1} / {questions.length}</span>
-            <button className="btn btn-primary" onClick={() => setCurIdx(Math.min(questions.length - 1, curIdx + 1))}>Keyingi ▶</button>
-          </div>
-        </div>
-        <div className="test-right">
-          {!finished && <button className="calc-toggle" onClick={() => setShowCalc(!showCalc)}>🖩<br />Kalku-<br />lyator</button>}
-          <div style={{ flex: 1 }}></div>
-          <div style={{ width: '100%' }}>
-            {finished ? (
-              <button className="right-btn" onClick={onBackToDashboard}>🏠 Dashboard</button>
-            ) : (
-              <button className="right-btn finish-btn" onClick={() => setShowFinishModal(true)}>✅ Testni<br />tugatish</button>
+            <div className="q-badge">Savol #{currentIndex + 1}</div>
+            <div className="question-text">{currentQuestion?.text}</div>
+            {currentQuestion?.image_url && (
+              <img src={currentQuestion.image_url} alt="Question" style={{ maxWidth: '100%', marginBottom: '1.5rem', borderRadius: '8px' }} />
             )}
+            <div className="answers-list">
+              {currentQuestion?.options.map((opt) => (
+                <div
+                  key={opt.id}
+                  className={`answer-opt ${answers[currentIndex] === opt.id ? 'selected' : ''}`}
+                  onClick={() => handleSelectOption(opt.id)}
+                >
+                  <div className="radio"></div>
+                  {opt.text}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="test-nav">
+            <button
+              className="btn btn-ghost"
+              disabled={currentIndex === 0}
+              onClick={() => setCurrentIndex(prev => prev - 1)}
+            >
+              ⬅️ Oldingi
+            </button>
+            <button
+              className="btn btn-primary"
+              disabled={currentIndex === questions.length - 1}
+              onClick={() => setCurrentIndex(prev => prev + 1)}
+            >
+              Keyingisi ➡️
+            </button>
           </div>
         </div>
       </div>
@@ -127,33 +142,34 @@ const TestInterface = ({ test, attemptId, initialQuestions, initialAnswers, init
       <Calculator isOpen={showCalc} onClose={() => setShowCalc(false)} />
 
       <Modal
-        id="modalFinish"
         isOpen={showFinishModal}
         onClose={() => setShowFinishModal(false)}
-        title="✅ Testni yakunlash"
+        title="Testni tugatish"
         footer={(
           <>
-            <button className="btn" style={{ background: '#e2e8f0' }} onClick={() => setShowFinishModal(false)}>Davom etish</button>
-            <button className="btn btn-danger" onClick={handleFinish}>Ha, yakunlash</button>
+            <button className="btn btn-ghost" onClick={() => setShowFinishModal(false)}>Davom etish</button>
+            <button className="btn btn-danger" onClick={handleFinish}>Ha, tugatish</button>
           </>
         )}
       >
-        <p><strong>{questions.length - Object.keys(answers).length}</strong> ta savolga javob berilmagan. Testni yakunlashni tasdiqlaysizmi?</p>
+        Haqiqatdan ham testni yakunlamoqchimisiz?
       </Modal>
 
-      {result && (
-        <Modal id="modalResult" isOpen={!!result} onClose={() => setResult(null)} title="Test Natijasi">
-          <div className="result-big">
-            <div className="result-score">{result.score}</div>
-            <div style={{ fontSize: '15px', color: 'var(--muted)', margin: '6px 0 16px' }}>ball to'plandi</div>
-            <div className="result-stats">
-              <div className="stat-card"><div className="stat-val" style={{ color: 'var(--success)' }}>{result.score}</div><div className="stat-lbl">✅ To'g'ri</div></div>
-              <div className="stat-card"><div className="stat-val" style={{ color: 'var(--danger)' }}>{result.total - result.score}</div><div className="stat-lbl">❌ Xato/Skip</div></div>
-            </div>
-            <button className="btn btn-primary btn-full" onClick={() => setResult(null)}>📋 Javoblarni ko'rish</button>
+      <Modal
+        isOpen={finished && result !== null}
+        onClose={onBackToDashboard}
+        title="Test yakunlandi"
+        footer={<button className="btn btn-primary" onClick={onBackToDashboard}>Yopish</button>}
+      >
+        <div className="result-big">
+          <div className="result-score">{result?.score} / {result?.total}</div>
+          <p>Sizning natijangiz</p>
+          <div className="result-stats">
+            <span className="badge badge-active">To'g'ri: {result?.score}</span>
+            <span className="badge badge-blocked">Xato: {result?.total - result?.score}</span>
           </div>
-        </Modal>
-      )}
+        </div>
+      </Modal>
     </div>
   );
 };

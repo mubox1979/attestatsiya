@@ -3,7 +3,7 @@ import { api } from '../api';
 import Navbar from './Navbar';
 import Modal from './Modal';
 
-const Dashboard = ({ user, onLogout, onUpdateUser, onStartTest, onReviewAttempt }) => {
+const Dashboard = ({ user, onLogout, onUpdateUser, onStartTest, onReviewAttempt, theme, onToggleTheme }) => {
   const [activeTab, setActiveTab] = useState('tests');
   const [tests, setTests] = useState([]);
   const [history, setHistory] = useState([]);
@@ -60,7 +60,7 @@ const Dashboard = ({ user, onLogout, onUpdateUser, onStartTest, onReviewAttempt 
 
   return (
     <div id="pageUser">
-      <Navbar brand="📋 Attestatsiya" menuItems={menuItems} rightContent={rightContent} onLogout={onLogout} />
+      <Navbar brand="📋 Attestatsiya" menuItems={menuItems} rightContent={rightContent} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
       <div className="container">
         {activeTab === 'tests' && (
           <div id="tabTests">

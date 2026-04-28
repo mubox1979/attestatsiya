@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api';
 import Navbar from './Navbar';
 
-const EditorPanel = ({ onLogout }) => {
+const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
   const [activeTab, setActiveTab] = useState('questions');
   const [tests, setTests] = useState([]);
   const [selectedTestId, setSelectedTestId] = useState('');
@@ -64,7 +64,7 @@ const EditorPanel = ({ onLogout }) => {
 
   return (
     <div id="pageEditor">
-      <Navbar brand="✏️ Muharrir Panel" menuItems={menuItems} onLogout={onLogout} />
+      <Navbar brand="✏️ Muharrir Panel" menuItems={menuItems} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
       <div className="container">
         {activeTab === 'questions' && (
           <div id="editorTabQuestions">

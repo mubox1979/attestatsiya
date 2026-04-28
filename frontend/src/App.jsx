@@ -11,12 +11,22 @@ function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
   // Test state
   const [activeTest, setActiveTest] = useState(null);
   const [attemptId, setAttemptId] = useState(null);
   const [sessionQuestions, setSessionQuestions] = useState([]);
   const [testMode, setTestMode] = useState(null); // 'taking', 'review'
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   useEffect(() => {
     if (token) {
@@ -115,11 +125,11 @@ function App() {
   }
 
   if (user.role === 'admin') {
-    return <AdminPanel onLogout={handleLogout} />;
+    return <AdminPanel onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />;
   }
 
   if (user.role === 'editor') {
-    return <EditorPanel onLogout={handleLogout} />;
+    return <EditorPanel onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />;
   }
 
   return (
@@ -129,6 +139,8 @@ function App() {
       onUpdateUser={handleUpdateUser}
       onStartTest={handleStartTest}
       onReviewAttempt={handleReviewAttempt}
+      theme={theme}
+      onToggleTheme={toggleTheme}
     />
   );
 }
