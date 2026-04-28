@@ -1,14 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import random
 from models.database import get_db, Test, Question, Option, Attempt, AttemptAnswer, Transaction, User, Subject
 from auth import get_current_user, require_editor, require_admin
 
 router = APIRouter(prefix="/tests", tags=["tests"])
-
-TEST_PRICE = 5000.0
 
 
 class TestIn(BaseModel):
@@ -26,10 +24,9 @@ class SubmitAnswerIn(BaseModel):
 
 
 class FinishIn(BaseModel):
-    answers: list[SubmitAnswerIn]
+    answers: List[SubmitAnswerIn]
 
 
-# ---- CRUD ----
 @router.post("/")
 def create_test(data: TestIn, db: Session = Depends(get_db), editor=Depends(require_editor)):
     if editor.role == "editor" and editor.subject_id != data.subject_id:
@@ -76,17 +73,14 @@ def delete_test(test_id: int, db: Session = Depends(get_db), editor=Depends(requ
     return {"ok": True}
 
 
-# ---- START TEST ----
 @router.post("/{test_id}/start")
 def start_test(test_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     test = db.query(Test).filter_by(id=test_id, is_active=True).first()
     if not test: raise HTTPException(404, "Test topilmadi")
 
-    # To'lov tekshirish
     if user.balance < test.price:
         raise HTTPException(400, f"Balans yetarli emas. Kerak: {test.price:,.0f} so'm, Sizda: {user.balance:,.0f} so'm")
 
-    # Savollarni random tanlash
     all_questions = db.query(Question).filter_by(test_id=test_id).all()
     if len(all_questions) == 0:
         raise HTTPException(400, "Bu testda savollar yo'q")
@@ -94,16 +88,13 @@ def start_test(test_id: int, db: Session = Depends(get_db), user: User = Depends
     count = min(50, len(all_questions))
     selected = random.sample(all_questions, count)
 
-    # Balansdan yechish
     user.balance -= test.price
     tx = Transaction(user_id=user.id, amount=-test.price, description=f"Test: {test.title}")
     db.add(tx)
 
-    # Attempt yaratish
     attempt = Attempt(user_id=user.id, test_id=test_id, total_questions=count)
     db.add(attempt); db.flush()
 
-    # Savollar va javoblarni shuffle qilib qaytarish
     questions_data = []
     for q in selected:
         opts = list(q.options)
@@ -125,7 +116,6 @@ def start_test(test_id: int, db: Session = Depends(get_db), user: User = Depends
     }
 
 
-# ---- FINISH TEST ----
 @router.post("/{test_id}/finish/{attempt_id}")
 def finish_test(test_id: int, attempt_id: int, data: FinishIn,
                 db: Session = Depends(get_db), user: User = Depends(get_current_user)):
@@ -135,18 +125,30 @@ def finish_test(test_id: int, attempt_id: int, data: FinishIn,
     if attempt.finished_at: raise HTTPException(400, "Test allaqachon yakunlangan")
 
     correct = 0
+    answers_result = []
+
     for ans in data.answers:
         is_correct = False
         if ans.selected_option_id:
             opt = db.query(Option).filter_by(id=ans.selected_option_id, question_id=ans.question_id).first()
             is_correct = bool(opt and opt.is_correct)
-        if is_correct: correct += 1
+        if is_correct:
+            correct += 1
         db.add(AttemptAnswer(
             attempt_id=attempt_id,
             question_id=ans.question_id,
             selected_option_id=ans.selected_option_id,
             is_correct=is_correct
         ))
+
+        # To'g'ri va xato javoblarni qaytarish
+        all_opts = db.query(Option).filter_by(question_id=ans.question_id).all()
+        answers_result.append({
+            "question_id": ans.question_id,
+            "selected_option_id": ans.selected_option_id,
+            "is_correct": is_correct,
+            "options": [{"id": o.id, "is_correct": o.is_correct} for o in all_opts]
+        })
 
     attempt.finished_at = datetime.utcnow()
     attempt.score = correct
@@ -155,11 +157,11 @@ def finish_test(test_id: int, attempt_id: int, data: FinishIn,
     return {
         "score": correct,
         "total": attempt.total_questions,
-        "percent": round(correct / attempt.total_questions * 100, 1) if attempt.total_questions else 0
+        "percent": round(correct / attempt.total_questions * 100, 1) if attempt.total_questions else 0,
+        "answers": answers_result
     }
 
 
-# ---- ATTEMPT REVIEW ----
 @router.get("/attempt/{attempt_id}/review")
 def review_attempt(attempt_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     attempt = db.query(Attempt).filter_by(id=attempt_id, user_id=user.id).first()

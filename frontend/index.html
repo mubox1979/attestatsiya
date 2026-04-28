@@ -571,7 +571,7 @@ tbody tr:hover{background:#f8fafc}
 
 <script>
 // ===== CONFIG =====
-const API = 'https://attestatsiya-269h.onrender.com'; // Deploy qilgandan keyin o'zgartiring
+const API = 'https://attestatsiya-269h.onrender.com'; // Deploy qilgandan keyin oʼzgartiring
 
 // ===== STATE =====
 let TOKEN = localStorage.getItem('token') || '';
@@ -702,7 +702,7 @@ async function loadTests() {
             <span>⏱ ${t.duration_minutes} daqiqa</span>
             <span>📝 ${t.question_count || 0} ta savol</span>
           </div>
-          <div class="test-price">💰 ${(t.price || 5000).toLocaleString()} so'm</div>
+          <div class="test-price">💰 ${(t.price || 5000).toLocaleString()} soʼm</div>
         </div>`;
     });
   } catch (e) { console.error(e); }
@@ -714,10 +714,10 @@ function openStartTest(test) {
     <p><strong>${test.title}</strong></p>
     <br>
     <p>⏱ Vaqt: <strong>${test.duration_minutes} daqiqa</strong></p>
-    <p>💰 Narxi: <strong>${(test.price||5000).toLocaleString()} so'm</strong></p>
-    <p>💳 Sizning balansingiz: <strong>${(CURRENT_USER.balance||0).toLocaleString()} so'm</strong></p>
+    <p>💰 Narxi: <strong>${(test.price||5000).toLocaleString()} soʼm</strong></p>
+    <p>💳 Sizning balansingiz: <strong>${(CURRENT_USER.balance||0).toLocaleString()} soʼm</strong></p>
     <br>
-    <p style="color:var(--muted);font-size:13px">Test boshlanishi bilan balansingizdan ${(test.price||5000).toLocaleString()} so'm yechiladi.</p>`;
+    <p style="color:var(--muted);font-size:13px">Test boshlanishi bilan balansingizdan ${(test.price||5000).toLocaleString()} soʼm yechiladi.</p>`;
   openModal('modalStartTest');
 }
 
@@ -757,7 +757,7 @@ async function loadHistory() {
         <td><strong>${a.score || 0}/${a.total || 0}</strong></td>
         <td>${pct}%</td>
         <td>${a.started_at ? new Date(a.started_at).toLocaleDateString('uz') : ''}</td>
-        <td><button class="btn btn-sm" style="background:#e2e8f0" onclick="reviewAttempt(${a.id})">Ko'rish</button></td>
+        <td><button class="btn btn-sm" style="background:#e2e8f0" onclick="reviewAttempt(${a.id})">Koʼrish</button></td>
       </tr>`;
     });
   } catch (e) { console.error(e); }
@@ -774,7 +774,7 @@ async function doTopup() {
   const errEl = document.getElementById('topupError');
   const sucEl = document.getElementById('topupSuccess');
   errEl.classList.remove('show'); sucEl.classList.remove('show');
-  if (!amount || amount < 1000) { errEl.textContent = 'Kamida 1000 so'm kiriting'; errEl.classList.add('show'); return; }
+  if (!amount || amount < 1000) { errEl.textContent = 'Kamida 1000 soʼm kiriting'; errEl.classList.add('show'); return; }
   try {
     const data = await api('POST', '/auth/topup', { amount });
     CURRENT_USER.balance = data.balance;
@@ -893,7 +893,7 @@ async function finishTest() {
     document.getElementById('rWrong').textContent = result.total - result.score - (SESSION.filter((_,i) => !ANSWERS[i]).length);
     document.getElementById('rSkip').textContent = SESSION.filter((_,i) => !ANSWERS[i]).length;
 
-    // Javoblarni to'g'ri/xato deb belgilash
+    // Javoblarni toʼgʼri/xato deb belgilash
     SESSION.forEach((q, i) => {
       if (ANSWERS[i]) ANSWERS[i].correct = !!ANSWERS[i].correct;
     });
@@ -928,10 +928,10 @@ async function reviewAttempt(attemptId) {
     FINISHED = true;
     CUR_IDX = 0;
     ATTEMPT_ID = null;
-    SELECTED_TEST = { id: 0, title: "Ko'rib chiqish", duration_minutes: 0 };
+    SELECTED_TEST = { id: 0, title: "Koʼrib chiqish", duration_minutes: 0 };
     showTestInterface();
     document.getElementById('testUserName').textContent = CURRENT_USER.username;
-    document.getElementById('testTitle').textContent = "Javoblarni ko'rish";
+    document.getElementById('testTitle').textContent = "Javoblarni koʼrish";
     document.getElementById('timerDisplay').textContent = '--:--:--';
     renderTestGrid();
     renderQ();
@@ -1017,7 +1017,7 @@ async function addEditor() {
   const email = document.getElementById('newEdEmail').value.trim();
   const password = document.getElementById('newEdPassword').value;
   const subject_id = parseInt(document.getElementById('newEdSubject').value);
-  if (!username || !email || !password || !subject_id) return alert("Barcha maydonlarni to'ldiring");
+  if (!username || !email || !password || !subject_id) return alert("Barcha maydonlarni toʼldiring");
   try {
     await api('POST', '/admin/editors', { username, email, password, subject_id });
     closeModal('modalAddEditor');
@@ -1035,10 +1035,10 @@ async function loadUsers() {
       tb.innerHTML += `<tr>
         <td><strong>${u.username}</strong></td>
         <td>${u.email}</td>
-        <td>${(u.balance || 0).toLocaleString()} so'm</td>
+        <td>${(u.balance || 0).toLocaleString()} soʼm</td>
         <td><span class="badge ${u.is_active ? 'badge-active' : 'badge-blocked'}">${u.is_active ? 'Faol' : 'Bloklangan'}</span></td>
         <td style="display:flex;gap:6px">
-          <button class="btn btn-sm btn-accent" onclick="openTopupUser(${u.id})">💰 To'ldirish</button>
+          <button class="btn btn-sm btn-accent" onclick="openTopupUser(${u.id})">💰 Toʼldirish</button>
           <button class="btn btn-sm" style="background:#${u.is_active ? 'ffebee;color:var(--danger)' : 'e8f5e9;color:var(--success)'}" 
             onclick="toggleUser(${u.id},${!u.is_active})">${u.is_active ? 'Bloklash' : 'Faollashtirish'}</button>
         </td>
@@ -1129,7 +1129,7 @@ async function submitQuestion() {
 
   const rows = document.querySelectorAll('.q-option-row');
   const selected = document.querySelector('input[name="correctOpt"]:checked');
-  if (!selected) { errEl.textContent = "To'g'ri javobni belgilang"; errEl.classList.add('show'); return; }
+  if (!selected) { errEl.textContent = "Toʼgʼri javobni belgilang"; errEl.classList.add('show'); return; }
 
   const options = [];
   let valid = true;
@@ -1138,7 +1138,7 @@ async function submitQuestion() {
     if (!txt) { valid = false; }
     options.push({ option_text: txt, is_correct: i === parseInt(selected.value) });
   });
-  if (!valid) { errEl.textContent = "Barcha javob variantlarini to'ldiring"; errEl.classList.add('show'); return; }
+  if (!valid) { errEl.textContent = "Barcha javob variantlarini toʼldiring"; errEl.classList.add('show'); return; }
 
   try {
     await api('POST', '/questions/', { test_id, question_text, image_url, options });
