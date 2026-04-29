@@ -1,28 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
+from typing import List
 from models.database import get_db, User, Transaction
 from auth import hash_password, verify_password, create_token, get_current_user
+from schemas import RegisterIn, RegisterOut, LoginIn, LoginOut, UserOut, TopUpIn, TopUpOut, TransactionOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-class RegisterIn(BaseModel):
-    username: str
-    email: str
-    password: str
-
-
-class LoginIn(BaseModel):
-    username: str
-    password: str
-
-
-class TopUpIn(BaseModel):
-    amount: float
-
-
-@router.post("/register")
+@router.post("/register", response_model=RegisterOut)
 def register(data: RegisterIn, db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(400, "Bu username band")
@@ -41,10 +27,10 @@ def register(data: RegisterIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     token = create_token({"user_id": user.id, "role": user.role})
-    return {"token": token, "user": _user_dict(user)}
+    return {"token": token, "user": user}
 
 
-@router.post("/login")
+@router.post("/login", response_model=LoginOut)
 def login(data: LoginIn, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == data.username).first()
     if not user or not verify_password(data.password, user.password_hash):
@@ -52,15 +38,15 @@ def login(data: LoginIn, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(403, "Akkaunt bloklangan")
     token = create_token({"user_id": user.id, "role": user.role})
-    return {"token": token, "user": _user_dict(user)}
+    return {"token": token, "user": user}
 
 
-@router.get("/me")
+@router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
-    return _user_dict(user)
+    return user
 
 
-@router.post("/topup")
+@router.post("/topup", response_model=TopUpOut)
 def topup(data: TopUpIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if data.amount <= 0:
         raise HTTPException(400, "Summa noto'g'ri")
@@ -72,20 +58,7 @@ def topup(data: TopUpIn, user: User = Depends(get_current_user), db: Session = D
     return {"balance": user.balance, "message": f"{data.amount:,.0f} so'm qo'shildi"}
 
 
-@router.get("/transactions")
+@router.get("/transactions", response_model=List[TransactionOut])
 def transactions(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    txs = db.query(__import__('models.database', fromlist=['Transaction']).Transaction)\
-            .filter_by(user_id=user.id).order_by(__import__('models.database', fromlist=['Transaction']).Transaction.created_at.desc()).limit(50).all()
-    return [{"amount": t.amount, "description": t.description, "date": t.created_at} for t in txs]
-
-
-def _user_dict(u: User):
-    return {
-        "id": u.id,
-        "username": u.username,
-        "email": u.email,
-        "balance": u.balance,
-        "role": u.role,
-        "subject_id": u.subject_id,
-        "created_at": u.created_at
-    }
+    txs = db.query(Transaction).filter_by(user_id=user.id).order_by(Transaction.created_at.desc()).limit(50).all()
+    return txs
