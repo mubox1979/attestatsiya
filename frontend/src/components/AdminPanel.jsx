@@ -3,9 +3,10 @@ import { api } from '../api';
 import Navbar from './Navbar';
 import Modal from './Modal';
 
-const AdminPanel = ({ onLogout, theme, onToggleTheme }) => {
+const AdminPanel = ({ user, onLogout, theme, onToggleTheme }) => {
   const [activeTab, setActiveTab] = useState('stats');
   const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [subjects, setSubjects] = useState([]);
   const [editors, setEditors] = useState([]);
   const [users, setUsers] = useState([]);
@@ -16,6 +17,10 @@ const AdminPanel = ({ onLogout, theme, onToggleTheme }) => {
   const [formData, setFormData] = useState({});
 
   useEffect(() => {
+    loadSubjects(); // Load subjects once for use in modals
+  }, []);
+
+  useEffect(() => {
     if (activeTab === 'stats') loadStats();
     if (activeTab === 'subjects') loadSubjects();
     if (activeTab === 'editors') loadEditors();
@@ -23,22 +28,28 @@ const AdminPanel = ({ onLogout, theme, onToggleTheme }) => {
   }, [activeTab]);
 
   const loadStats = async () => {
-    try { const data = await api('GET', '/admin/stats'); setStats(data); } catch (e) { console.error(e); }
+    setLoading(true);
+    try { const data = await api('GET', '/admin/stats'); setStats(data); } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const loadSubjects = async () => {
-    try { const data = await api('GET', '/admin/subjects'); setSubjects(data); } catch (e) { console.error(e); }
+    setLoading(true);
+    try { const data = await api('GET', '/admin/subjects'); setSubjects(data); } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const loadEditors = async () => {
-    try { const data = await api('GET', '/admin/editors'); setEditors(data); } catch (e) { console.error(e); }
+    setLoading(true);
+    try { const data = await api('GET', '/admin/editors'); setEditors(data); } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const loadUsers = async () => {
-    try { const data = await api('GET', '/admin/users'); setUsers(data); } catch (e) { console.error(e); }
+    setLoading(true);
+    try { const data = await api('GET', '/admin/users'); setUsers(data); } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const handleAddSubject = async () => {
+    if (!formData.newSubjectName) return alert('Nomini kiriting');
+    setLoading(true);
     try {
       await api('POST', '/admin/subjects', { name: formData.newSubjectName, description: formData.newSubjectDesc });
       setShowAddSubject(false);
@@ -47,6 +58,8 @@ const AdminPanel = ({ onLogout, theme, onToggleTheme }) => {
   };
 
   const handleAddEditor = async () => {
+    if (!formData.newEdUsername || !formData.newEdSubject) return alert('Barcha maydonlarni to\'ldiring');
+    setLoading(true);
     try {
       await api('POST', '/admin/editors', {
         username: formData.newEdUsername,
@@ -56,10 +69,11 @@ const AdminPanel = ({ onLogout, theme, onToggleTheme }) => {
       });
       setShowAddEditor(false);
       loadEditors();
-    } catch (e) { alert(e.message); }
+    } catch (e) { alert(e.message); } finally { setLoading(false); }
   };
 
   const handleTopupUser = async () => {
+    setLoading(true);
     try {
       await api('POST', `/admin/users/${selectedUser.id}/topup`, { amount: parseFloat(formData.topupUserAmount), description: 'Admin' });
       setShowTopupUser(false);
@@ -85,6 +99,7 @@ const AdminPanel = ({ onLogout, theme, onToggleTheme }) => {
     <div id="pageAdmin">
       <Navbar brand="⚙️ Admin Panel" menuItems={menuItems} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
       <div className="container">
+        {loading && <div className="loading-bar"></div>}
         {activeTab === 'stats' && stats && (
           <div id="adminTabStats">
             <div className="page-title">📊 Umumiy statistika</div>
@@ -135,7 +150,7 @@ const AdminPanel = ({ onLogout, theme, onToggleTheme }) => {
                       <tr key={e.id}>
                         <td><strong>{e.username}</strong></td>
                         <td>{e.email}</td>
-                        <td>Fan #{e.subject_id}</td>
+                        <td>{e.subject_name || `Fan #${e.subject_id}`}</td>
                         <td><span className={`badge ${e.is_active ? 'badge-active' : 'badge-blocked'}`}>{e.is_active ? 'Faol' : 'Blok'}</span></td>
                       </tr>
                     ))}
@@ -152,12 +167,13 @@ const AdminPanel = ({ onLogout, theme, onToggleTheme }) => {
             <div className="card">
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>Username</th><th>Email</th><th>Balans</th><th>Holat</th><th>Amallar</th></tr></thead>
+                  <thead><tr><th>Username</th><th>Email</th><th>Rol / Fan</th><th>Balans</th><th>Holat</th><th>Amallar</th></tr></thead>
                   <tbody>
                     {users.map(u => (
                       <tr key={u.id}>
                         <td><strong>{u.username}</strong></td>
                         <td>{u.email}</td>
+                        <td>{u.role === 'editor' ? `Muharrir (${u.subject_name})` : 'Foydalanuvchi'}</td>
                         <td>{(u.balance || 0).toLocaleString()} soʼm</td>
                         <td><span className={`badge ${u.is_active ? 'badge-active' : 'badge-blocked'}`}>{u.is_active ? 'Faol' : 'Blok'}</span></td>
                         <td style={{ display: 'flex', gap: '6px' }}>
@@ -174,12 +190,12 @@ const AdminPanel = ({ onLogout, theme, onToggleTheme }) => {
         )}
       </div>
 
-      <Modal id="modalAddSubject" isOpen={showAddSubject} onClose={() => setShowAddSubject(false)} title="📚 Yangi fan qo'shish" footer={<><button className="btn" onClick={() => setShowAddSubject(false)}>Bekor</button><button className="btn btn-primary" onClick={handleAddSubject}>Saqlash</button></>}>
+      <Modal id="modalAddSubject" isOpen={showAddSubject} onClose={() => setShowAddSubject(false)} title="📚 Yangi fan qo'shish" footer={<><button className="btn" onClick={() => setShowAddSubject(false)}>Bekor</button><button className="btn btn-primary" disabled={loading} onClick={handleAddSubject}>{loading ? <span className="spinner"></span> : 'Saqlash'}</button></>}>
         <div className="form-group"><label>Fan nomi</label><input className="form-input" onChange={(e) => setFormData({ ...formData, newSubjectName: e.target.value })} /></div>
         <div className="form-group"><label>Tavsif</label><input className="form-input" onChange={(e) => setFormData({ ...formData, newSubjectDesc: e.target.value })} /></div>
       </Modal>
 
-      <Modal id="modalAddEditor" isOpen={showAddEditor} onClose={() => setShowAddEditor(false)} title="✏️ Yangi muharrir qo'shish" footer={<><button className="btn" onClick={() => setShowAddEditor(false)}>Bekor</button><button className="btn btn-primary" onClick={handleAddEditor}>Saqlash</button></>}>
+      <Modal id="modalAddEditor" isOpen={showAddEditor} onClose={() => setShowAddEditor(false)} title="✏️ Yangi muharrir qo'shish" footer={<><button className="btn" onClick={() => setShowAddEditor(false)}>Bekor</button><button className="btn btn-primary" disabled={loading} onClick={handleAddEditor}>{loading ? <span className="spinner"></span> : 'Saqlash'}</button></>}>
         <div className="form-group"><label>Username</label><input className="form-input" onChange={(e) => setFormData({ ...formData, newEdUsername: e.target.value })} /></div>
         <div className="form-group"><label>Email</label><input className="form-input" onChange={(e) => setFormData({ ...formData, newEdEmail: e.target.value })} /></div>
         <div className="form-group"><label>Parol</label><input className="form-input" type="password" onChange={(e) => setFormData({ ...formData, newEdPassword: e.target.value })} /></div>
@@ -191,7 +207,7 @@ const AdminPanel = ({ onLogout, theme, onToggleTheme }) => {
         </div>
       </Modal>
 
-      <Modal id="modalTopupUser" isOpen={showTopupUser} onClose={() => setShowTopupUser(false)} title="💰 Toʼldirish" footer={<><button className="btn" onClick={() => setShowTopupUser(false)}>Bekor</button><button className="btn btn-primary" onClick={handleTopupUser}>Toʼldirish</button></>}>
+      <Modal id="modalTopupUser" isOpen={showTopupUser} onClose={() => setShowTopupUser(false)} title="💰 Toʼldirish" footer={<><button className="btn" onClick={() => setShowTopupUser(false)}>Bekor</button><button className="btn btn-primary" disabled={loading} onClick={handleTopupUser}>{loading ? <span className="spinner"></span> : 'Toʼldirish'}</button></>}>
         <div className="form-group"><label>Summa</label><input className="form-input" type="number" onChange={(e) => setFormData({ ...formData, topupUserAmount: e.target.value })} /></div>
       </Modal>
     </div>

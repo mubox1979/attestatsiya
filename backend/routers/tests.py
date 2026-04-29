@@ -29,15 +29,16 @@ def create_test(data: TestCreate, db: Session = Depends(get_db), editor=Depends(
         created_by=editor.id
     )
     db.add(t); db.commit(); db.refresh(t)
-    return t
+    return db.query(Test).options(joinedload(Test.subject)).filter(Test.id == t.id).first()
 
 
 @router.get("/", response_model=List[TestListOut])
 def list_tests(db: Session = Depends(get_db)):
     # Optimize using join and group_by to get counts in one query
     test_counts = db.query(Test, func.count(Question.id).label("question_count"))\
+        .options(joinedload(Test.subject))\
         .outerjoin(Question).filter(Test.is_active == True)\
-        .group_by(Test.id).all()
+        .group_by(Test.id, Test.subject_id).all()
 
     result = []
     for test, count in test_counts:
@@ -49,8 +50,9 @@ def list_tests(db: Session = Depends(get_db)):
 @router.get("/my-subject", response_model=List[TestListOut])
 def my_subject_tests(db: Session = Depends(get_db), editor=Depends(require_editor)):
     test_counts = db.query(Test, func.count(Question.id).label("question_count"))\
+        .options(joinedload(Test.subject))\
         .outerjoin(Question).filter(Test.subject_id == editor.subject_id)\
-        .group_by(Test.id).all()
+        .group_by(Test.id, Test.subject_id).all()
 
     result = []
     for test, count in test_counts:

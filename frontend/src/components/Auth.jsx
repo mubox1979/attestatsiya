@@ -16,11 +16,9 @@ const Auth = ({ onLoginSuccess }) => {
     try {
       if (isLogin) {
         const data = await api('POST', '/auth/login', { username, password });
-        localStorage.setItem('token', data.token);
         onLoginSuccess(data.user, data.token);
       } else {
         const data = await api('POST', '/auth/register', { username, email, password });
-        localStorage.setItem('token', data.token);
         onLoginSuccess(data.user, data.token);
       }
     } catch (err) {

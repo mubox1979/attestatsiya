@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, ConfigDict, Field
+from pydantic import BaseModel, EmailStr, ConfigDict, Field, AliasPath
 from typing import List, Optional
 from datetime import datetime
 
@@ -25,7 +25,8 @@ class CreateEditorIn(BaseModel):
 class EditorOut(BaseModel):
     id: int
     username: str
-    subject: str
+    subject_name: Optional[str] = Field(None, validation_alias=AliasPath("subject", "name"))
+    model_config = ConfigDict(from_attributes=True)
 
 class UpdateUserIn(BaseModel):
     is_active: Optional[bool] = None
@@ -40,9 +41,10 @@ class UserOut(UserBase):
     balance: float
     role: str
     subject_id: Optional[int] = None
+    subject_name: Optional[str] = Field(None, validation_alias=AliasPath("subject", "name"))
     is_active: bool
     created_at: datetime
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 class SubjectBase(BaseModel):
     name: str
@@ -142,8 +144,9 @@ class TestCreate(BaseModel):
 class TestOut(TestBase):
     id: int
     subject_id: int
+    subject_name: Optional[str] = Field(None, validation_alias=AliasPath("subject", "name"))
     is_active: bool
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 class TestListOut(TestOut):
     question_count: int

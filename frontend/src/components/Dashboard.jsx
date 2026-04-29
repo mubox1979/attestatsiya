@@ -11,6 +11,7 @@ const Dashboard = ({ user, onLogout, onUpdateUser, onStartTest, onReviewAttempt,
   const [showStartModal, setShowStartModal] = useState(false);
   const [topupAmount, setTopupAmount] = useState('');
   const [topupStatus, setTopupStatus] = useState({ error: '', success: '' });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'tests') loadTests();
@@ -18,20 +19,23 @@ const Dashboard = ({ user, onLogout, onUpdateUser, onStartTest, onReviewAttempt,
   }, [activeTab]);
 
   const loadTests = async () => {
+    setLoading(true);
     try {
       const data = await api('GET', '/tests/');
       setTests(data);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const loadHistory = async () => {
+    setLoading(true);
     try {
       const data = await api('GET', '/tests/my-attempts');
       setHistory(data);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const handleTopup = async () => {
+    setLoading(true);
     setTopupStatus({ error: '', success: '' });
     const amount = parseFloat(topupAmount);
     if (!amount || amount < 1000) {
@@ -45,6 +49,8 @@ const Dashboard = ({ user, onLogout, onUpdateUser, onStartTest, onReviewAttempt,
       setTopupAmount('');
     } catch (e) {
       setTopupStatus({ error: e.message, success: '' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -62,6 +68,7 @@ const Dashboard = ({ user, onLogout, onUpdateUser, onStartTest, onReviewAttempt,
     <div id="pageUser">
       <Navbar brand="📋 Attestatsiya" menuItems={menuItems} rightContent={rightContent} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
       <div className="container">
+        {loading && <div className="loading-bar"></div>}
         {activeTab === 'tests' && (
           <div id="tabTests">
             <div className="page-title">📚 Mavjud testlar</div>
@@ -71,7 +78,7 @@ const Dashboard = ({ user, onLogout, onUpdateUser, onStartTest, onReviewAttempt,
               ) : (
                 tests.map(t => (
                   <div key={t.id} className="test-card" onClick={() => { setSelectedTest(t); setShowStartModal(true); }}>
-                    <div className="test-subject">📚 Fan #{t.subject_id}</div>
+                    <div className="test-subject">📚 {t.subject_name || `Fan #${t.subject_id}`}</div>
                     <div className="test-title">{t.title}</div>
                     <div className="test-meta">
                       <span>⏱ {t.duration_minutes} daqiqa</span>
@@ -110,7 +117,9 @@ const Dashboard = ({ user, onLogout, onUpdateUser, onStartTest, onReviewAttempt,
               </div>
               {topupStatus.success && <div className="success-msg show">{topupStatus.success}</div>}
               {topupStatus.error && <div className="error-msg show">{topupStatus.error}</div>}
-              <button className="btn btn-primary btn-full" onClick={handleTopup}>✅ To'ldirish</button>
+              <button className="btn btn-primary btn-full" disabled={loading} onClick={handleTopup}>
+                {loading ? <span className="spinner"></span> : "✅ To'ldirish"}
+              </button>
               <p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '12px', textAlign: 'center' }}>
                 * Demo rejimda to'lov avtomatik qo'shiladi.<br />Haqiqiy tizimda to'lov tizimi ulanadi.
               </p>
