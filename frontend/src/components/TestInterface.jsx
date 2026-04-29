@@ -74,6 +74,8 @@ const TestInterface = ({ user, test, attemptId, initialQuestions, initialAnswers
     return `${h < 10 ? '0' : ''}${h}:${m < 10 ? '0' : ''}${m}:${rs < 10 ? '0' : ''}${rs}`;
   };
 
+  const subjectName = test?.subject_name || 'INFORMATIKA';
+
   const subjectQuestions = questions.filter(q => !q.is_pedagogy);
   const pedagogyQuestions = questions.filter(q => q.is_pedagogy);
 
@@ -115,7 +117,7 @@ const TestInterface = ({ user, test, attemptId, initialQuestions, initialAnswers
       <div className="test-main">
         <div className="test-sidebar-left">
           <div className="sidebar-section-title">
-             <span style={{color: '#3b82f6'}}>■</span> INFORMATIKA ({subjectQuestions.length})
+             <span style={{color: '#3b82f6'}}>■</span> {subjectName.toUpperCase()} ({subjectQuestions.length})
           </div>
           <div className="question-grid">
             {subjectQuestions.map((q, i) => {
@@ -161,7 +163,7 @@ const TestInterface = ({ user, test, attemptId, initialQuestions, initialAnswers
             <div className="q-header-badges">
               <div className="badge-q-num">Savol {currentIndex + 1}</div>
               <div className="badge-subject">
-                <span style={{color: '#3b82f6'}}>■</span> {currentQuestion?.is_pedagogy ? 'Pedagogika' : 'Informatika'}
+                <span style={{color: '#3b82f6'}}>■</span> {currentQuestion?.is_pedagogy ? 'Pedagogika' : subjectName}
               </div>
             </div>
 

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from models.database import get_db, User, Subject, Transaction, Attempt, Test
 from auth import hash_password, require_admin
@@ -47,18 +47,20 @@ def create_editor(data: CreateEditorIn, db: Session = Depends(get_db), admin=Dep
         subject_id=data.subject_id
     )
     db.add(u); db.commit(); db.refresh(u)
-    return {"id": u.id, "username": u.username, "subject": subj.name}
+    # Refresh to load relationship
+    u = db.query(User).options(joinedload(User.subject)).filter(User.id == u.id).first()
+    return u
 
 
 @router.get("/editors", response_model=List[UserOut])
 def list_editors(db: Session = Depends(get_db), admin=Depends(require_admin)):
-    return db.query(User).filter(User.role == "editor").all()
+    return db.query(User).options(joinedload(User.subject)).filter(User.role == "editor").all()
 
 
 # ---- USERS ----
 @router.get("/users", response_model=List[UserOut])
 def list_users(db: Session = Depends(get_db), admin=Depends(require_admin)):
-    return db.query(User).filter(User.role == "user").order_by(User.created_at.desc()).all()
+    return db.query(User).options(joinedload(User.subject)).filter(User.role == "user").order_by(User.created_at.desc()).all()
 
 
 @router.patch("/users/{user_id}", response_model=UserOut)

@@ -49,6 +49,7 @@ function App() {
   };
 
   const handleLoginSuccess = (userData, newToken) => {
+    localStorage.setItem('token', newToken);
     setUser(userData);
     setToken(newToken);
   };
@@ -127,11 +128,11 @@ function App() {
   }
 
   if (user.role === 'admin') {
-    return <AdminPanel onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />;
+    return <AdminPanel user={user} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />;
   }
 
   if (user.role === 'editor') {
-    return <EditorPanel onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />;
+    return <EditorPanel user={user} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />;
   }
 
   return (

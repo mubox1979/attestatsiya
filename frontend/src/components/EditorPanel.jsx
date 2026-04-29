@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api';
 import Navbar from './Navbar';
 
-const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
+const EditorPanel = ({ user, onLogout, theme, onToggleTheme }) => {
   const [activeTab, setActiveTab] = useState('questions');
+  const [loading, setLoading] = useState(false);
   const [tests, setTests] = useState([]);
   const [selectedTestId, setSelectedTestId] = useState('');
   const [questions, setQuestions] = useState([]);
@@ -31,17 +32,19 @@ const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
   }, [selectedTestId]);
 
   const loadEditorData = async () => {
+    setLoading(true);
     try {
       const data = await api('GET', '/tests/my-subject');
       setTests(data);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const loadEditorQuestions = async () => {
+    setLoading(true);
     try {
       const data = await api('GET', `/questions/test/${selectedTestId}`);
       setQuestions(data);
-    } catch (e) { alert(e.message); }
+    } catch (e) { alert(e.message); } finally { setLoading(false); }
   };
 
   const handleSubmitQuestion = async () => {
@@ -53,6 +56,7 @@ const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
       is_correct: i === parseInt(correctOpt)
     }));
 
+    setLoading(true);
     try {
       await api('POST', '/questions/', {
         test_id: parseInt(selectedTestId),
@@ -62,36 +66,18 @@ const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
         options: finalOptions
       });
       alert('Savol saqlandi');
-      setFormData({ addQText: '', addQImage: '', isPedagogy: false, options: ['', '', '', ''], correctOpt: null });
-    } catch (e) { alert(e.message); }
+      setFormData({ ...formData, addQText: '', addQImage: '', isPedagogy: false, options: ['', '', '', ''], correctOpt: null });
+      loadEditorQuestions();
+    } catch (e) { alert(e.message); } finally { setLoading(false); }
   };
-
-  const handleCreateTest = async () => {
-    const { testTitle, testDesc, testPrice, testDuration, testInfoCount, testPedCount } = formData;
-    if (!testTitle) return alert('Test nomini kiriting');
-    try {
-      // Assuming user.subject_id is available if we fetched from current user,
-      // but EditorPanel might not have 'user' prop yet.
-      // Let's check how EditorPanel is called in App.jsx.
-      // App.jsx: <EditorPanel onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />;
-      // It doesn't have user prop. Let's fix that in App.jsx.
-    } catch (e) { alert(e.message); }
-  };
-
-  const menuItems = [
-    { id: 'questions', label: 'Savollar', active: activeTab === 'questions', onClick: () => setActiveTab('questions') },
-    { id: 'addQuestion', label: '+ Savol qo\'shish', active: activeTab === 'addQuestion', onClick: () => setActiveTab('addQuestion') },
-    { id: 'tests', label: 'Testlarim', active: activeTab === 'tests', onClick: () => setActiveTab('tests') },
-    { id: 'addTest', label: '+ Test yaratish', active: activeTab === 'addTest', onClick: () => setActiveTab('addTest') },
-  ];
 
   const handleCreateTestReal = async () => {
     const { testTitle, testDesc, testPrice, testDuration, testInfoCount, testPedCount } = formData;
     if (!testTitle) return alert('Test nomini kiriting');
+    setLoading(true);
     try {
-        const userData = await api('GET', '/auth/me'); // Get subject_id
         await api('POST', '/tests/', {
-            subject_id: userData.subject_id,
+            subject_id: user.subject_id,
             title: testTitle,
             description: testDesc,
             price: testPrice,
@@ -102,13 +88,21 @@ const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
         alert('Test yaratildi');
         setActiveTab('tests');
         loadEditorData();
-    } catch (e) { alert(e.message); }
+    } catch (e) { alert(e.message); } finally { setLoading(false); }
   };
+
+  const menuItems = [
+    { id: 'questions', label: 'Savollar', active: activeTab === 'questions', onClick: () => setActiveTab('questions') },
+    { id: 'addQuestion', label: '+ Savol qo\'shish', active: activeTab === 'addQuestion', onClick: () => setActiveTab('addQuestion') },
+    { id: 'tests', label: 'Testlarim', active: activeTab === 'tests', onClick: () => setActiveTab('tests') },
+    { id: 'addTest', label: '+ Test yaratish', active: activeTab === 'addTest', onClick: () => setActiveTab('addTest') },
+  ];
 
   return (
     <div id="pageEditor">
       <Navbar brand="✏️ Muharrir Panel" menuItems={menuItems} onLogout={onLogout} theme={theme} onToggleTheme={onToggleTheme} />
       <div className="container">
+        {loading && <div className="loading-bar"></div>}
         {activeTab === 'questions' && (
           <div id="editorTabQuestions">
             <div className="page-title">📝 Savollar bazasi</div>
@@ -173,7 +167,7 @@ const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
                   }} />
                 </div>
               ))}
-              <button className="btn btn-primary btn-full" onClick={handleSubmitQuestion}>✅ Saqlash</button>
+              <button className="btn btn-primary btn-full" disabled={loading} onClick={handleSubmitQuestion}>{loading ? <span className="spinner"></span> : '✅ Saqlash'}</button>
             </div>
           </div>
         )}
@@ -216,7 +210,7 @@ const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
                  <div className="form-group"><label>Mutaxassislik savollari (ta)</label><input type="number" className="form-input" value={formData.testInfoCount} onChange={(e) => setFormData({...formData, testInfoCount: e.target.value})} /></div>
                  <div className="form-group"><label>Pedagogika savollari (ta)</label><input type="number" className="form-input" value={formData.testPedCount} onChange={(e) => setFormData({...formData, testPedCount: e.target.value})} /></div>
               </div>
-              <button className="btn btn-primary btn-full" onClick={handleCreateTestReal}>✅ Yaratish</button>
+              <button className="btn btn-primary btn-full" disabled={loading} onClick={handleCreateTestReal}>{loading ? <span className="spinner"></span> : '✅ Yaratish'}</button>
             </div>
           </div>
         )}
