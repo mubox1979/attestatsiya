@@ -52,3 +52,7 @@ app.include_router(tests.router)
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+@app.get("/")
+def root():
+    return {"status": "ok"}
