@@ -1,48 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from typing import Optional
-from models.database import get_db, User, Subject, Transaction
-from auth import hash_password, require_admin, get_current_user
+from typing import List
+from models.database import get_db, User, Subject, Transaction, Attempt, Test
+from auth import hash_password, require_admin
+from schemas import (
+    CreateEditorIn, EditorOut, CreateSubjectIn, SubjectOut,
+    UpdateUserIn, UserOut, AdminTopUpIn, AdminStats
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-class CreateEditorIn(BaseModel):
-    username: str
-    email: str
-    password: str
-    subject_id: int
-
-
-class CreateSubjectIn(BaseModel):
-    name: str
-    description: Optional[str] = None
-
-
-class UpdateUserIn(BaseModel):
-    is_active: Optional[bool] = None
-    balance: Optional[float] = None
-    role: Optional[str] = None
-
-
-class TopUpUserIn(BaseModel):
-    amount: float
-    description: Optional[str] = "Admin tomonidan to'ldirish"
-
-
 # ---- SUBJECTS ----
-@router.post("/subjects")
+@router.post("/subjects", response_model=SubjectOut)
 def create_subject(data: CreateSubjectIn, db: Session = Depends(get_db), admin=Depends(require_admin)):
     s = Subject(name=data.name, description=data.description)
     db.add(s); db.commit(); db.refresh(s)
-    return {"id": s.id, "name": s.name}
+    return s
 
 
-@router.get("/subjects")
+@router.get("/subjects", response_model=List[SubjectOut])
 def list_subjects(db: Session = Depends(get_db), admin=Depends(require_admin)):
-    subjects = db.query(Subject).all()
-    return [{"id": s.id, "name": s.name, "description": s.description} for s in subjects]
+    return db.query(Subject).all()
 
 
 @router.delete("/subjects/{subject_id}")
@@ -54,7 +33,7 @@ def delete_subject(subject_id: int, db: Session = Depends(get_db), admin=Depends
 
 
 # ---- EDITORS ----
-@router.post("/editors")
+@router.post("/editors", response_model=EditorOut)
 def create_editor(data: CreateEditorIn, db: Session = Depends(get_db), admin=Depends(require_admin)):
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(400, "Bu username band")
@@ -71,20 +50,18 @@ def create_editor(data: CreateEditorIn, db: Session = Depends(get_db), admin=Dep
     return {"id": u.id, "username": u.username, "subject": subj.name}
 
 
-@router.get("/editors")
+@router.get("/editors", response_model=List[UserOut])
 def list_editors(db: Session = Depends(get_db), admin=Depends(require_admin)):
-    editors = db.query(User).filter(User.role == "editor").all()
-    return [_udict(e) for e in editors]
+    return db.query(User).filter(User.role == "editor").all()
 
 
 # ---- USERS ----
-@router.get("/users")
+@router.get("/users", response_model=List[UserOut])
 def list_users(db: Session = Depends(get_db), admin=Depends(require_admin)):
-    users = db.query(User).filter(User.role == "user").order_by(User.created_at.desc()).all()
-    return [_udict(u) for u in users]
+    return db.query(User).filter(User.role == "user").order_by(User.created_at.desc()).all()
 
 
-@router.patch("/users/{user_id}")
+@router.patch("/users/{user_id}", response_model=UserOut)
 def update_user(user_id: int, data: UpdateUserIn, db: Session = Depends(get_db), admin=Depends(require_admin)):
     u = db.query(User).filter_by(id=user_id).first()
     if not u: raise HTTPException(404, "Foydalanuvchi topilmadi")
@@ -92,11 +69,11 @@ def update_user(user_id: int, data: UpdateUserIn, db: Session = Depends(get_db),
     if data.balance is not None: u.balance = data.balance
     if data.role is not None: u.role = data.role
     db.commit()
-    return _udict(u)
+    return u
 
 
 @router.post("/users/{user_id}/topup")
-def topup_user(user_id: int, data: TopUpUserIn, db: Session = Depends(get_db), admin=Depends(require_admin)):
+def topup_user(user_id: int, data: AdminTopUpIn, db: Session = Depends(get_db), admin=Depends(require_admin)):
     u = db.query(User).filter_by(id=user_id).first()
     if not u: raise HTTPException(404, "Foydalanuvchi topilmadi")
     u.balance += data.amount
@@ -105,21 +82,12 @@ def topup_user(user_id: int, data: TopUpUserIn, db: Session = Depends(get_db), a
     return {"balance": u.balance}
 
 
-@router.get("/stats")
+@router.get("/stats", response_model=AdminStats)
 def stats(db: Session = Depends(get_db), admin=Depends(require_admin)):
-    from models.database import Attempt, Test
     return {
         "total_users": db.query(User).filter(User.role == "user").count(),
         "total_editors": db.query(User).filter(User.role == "editor").count(),
         "total_subjects": db.query(Subject).count(),
         "total_tests": db.query(Test).count(),
         "total_attempts": db.query(Attempt).count(),
-    }
-
-
-def _udict(u: User):
-    return {
-        "id": u.id, "username": u.username, "email": u.email,
-        "balance": u.balance, "role": u.role, "is_active": u.is_active,
-        "subject_id": u.subject_id, "created_at": u.created_at
     }

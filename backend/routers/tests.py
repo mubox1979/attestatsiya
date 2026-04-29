@@ -1,34 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from typing import Optional, List
+from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy import func
+from typing import List, Optional
 import random
-from models.database import get_db, Test, Question, Option, Attempt, AttemptAnswer, Transaction, User, Subject
-from auth import get_current_user, require_editor, require_admin
+from datetime import datetime
+from models.database import get_db, Test, Question, Option, Attempt, AttemptAnswer, Transaction, User
+from auth import get_current_user, require_editor
+from schemas import (
+    TestCreate, TestOut, TestListOut, StartTestOut,
+    FinishIn, FinishOut, AttemptOut, AttemptReviewOut
+)
 
 router = APIRouter(prefix="/tests", tags=["tests"])
 
 
-class TestIn(BaseModel):
-    subject_id: int
-    title: str
-    description: Optional[str] = None
-    duration_minutes: int = 120
-    questions_count: int = 50
-    price: float = 5000.0
-
-
-class SubmitAnswerIn(BaseModel):
-    question_id: int
-    selected_option_id: Optional[int] = None
-
-
-class FinishIn(BaseModel):
-    answers: List[SubmitAnswerIn]
-
-
-@router.post("/")
-def create_test(data: TestIn, db: Session = Depends(get_db), editor=Depends(require_editor)):
+@router.post("/", response_model=TestOut)
+def create_test(data: TestCreate, db: Session = Depends(get_db), editor=Depends(require_editor)):
     if editor.role == "editor" and editor.subject_id != data.subject_id:
         raise HTTPException(403, "Faqat o'z faniga test yarata olasiz")
     t = Test(
@@ -40,26 +27,33 @@ def create_test(data: TestIn, db: Session = Depends(get_db), editor=Depends(requ
         created_by=editor.id
     )
     db.add(t); db.commit(); db.refresh(t)
-    return _tdict(t)
+    return t
 
 
-@router.get("/")
+@router.get("/", response_model=List[TestListOut])
 def list_tests(db: Session = Depends(get_db)):
-    tests = db.query(Test).filter_by(is_active=True).all()
+    # Optimize using join and group_by to get counts in one query
+    test_counts = db.query(Test, func.count(Question.id).label("question_count"))\
+        .outerjoin(Question).filter(Test.is_active == True)\
+        .group_by(Test.id).all()
+
     result = []
-    for t in tests:
-        q_count = db.query(Question).filter_by(test_id=t.id).count()
-        result.append({**_tdict(t), "question_count": q_count})
+    for test, count in test_counts:
+        test.question_count = count
+        result.append(test)
     return result
 
 
-@router.get("/my-subject")
+@router.get("/my-subject", response_model=List[TestListOut])
 def my_subject_tests(db: Session = Depends(get_db), editor=Depends(require_editor)):
-    tests = db.query(Test).filter_by(subject_id=editor.subject_id).all()
+    test_counts = db.query(Test, func.count(Question.id).label("question_count"))\
+        .outerjoin(Question).filter(Test.subject_id == editor.subject_id)\
+        .group_by(Test.id).all()
+
     result = []
-    for t in tests:
-        q_count = db.query(Question).filter_by(test_id=t.id).count()
-        result.append({**_tdict(t), "question_count": q_count})
+    for test, count in test_counts:
+        test.question_count = count
+        result.append(test)
     return result
 
 
@@ -73,7 +67,7 @@ def delete_test(test_id: int, db: Session = Depends(get_db), editor=Depends(requ
     return {"ok": True}
 
 
-@router.post("/{test_id}/start")
+@router.post("/{test_id}/start", response_model=StartTestOut)
 def start_test(test_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     test = db.query(Test).filter_by(id=test_id, is_active=True).first()
     if not test: raise HTTPException(404, "Test topilmadi")
@@ -81,7 +75,7 @@ def start_test(test_id: int, db: Session = Depends(get_db), user: User = Depends
     if user.balance < test.price:
         raise HTTPException(400, f"Balans yetarli emas. Kerak: {test.price:,.0f} so'm, Sizda: {user.balance:,.0f} so'm")
 
-    all_questions = db.query(Question).filter_by(test_id=test_id).all()
+    all_questions = db.query(Question).filter_by(test_id=test_id).options(joinedload(Question.options)).all()
     if len(all_questions) == 0:
         raise HTTPException(400, "Bu testda savollar yo'q")
 
@@ -116,24 +110,33 @@ def start_test(test_id: int, db: Session = Depends(get_db), user: User = Depends
     }
 
 
-@router.post("/{test_id}/finish/{attempt_id}")
+@router.post("/{test_id}/finish/{attempt_id}", response_model=FinishOut)
 def finish_test(test_id: int, attempt_id: int, data: FinishIn,
                 db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    from datetime import datetime
     attempt = db.query(Attempt).filter_by(id=attempt_id, user_id=user.id).first()
     if not attempt: raise HTTPException(404, "Urinish topilmadi")
     if attempt.finished_at: raise HTTPException(400, "Test allaqachon yakunlangan")
 
+    # Optimization: Fetch all options for the submitted questions in one query if needed,
+    # but here we'll stick to a slightly cleaner loop or improved query logic.
     correct = 0
     answers_result = []
 
+    # Get all questions and their options for this test to avoid repeated queries
+    question_ids = [ans.question_id for ans in data.answers]
+    questions = db.query(Question).filter(Question.id.in_(question_ids)).options(joinedload(Question.options)).all()
+    q_map = {q.id: q for q in questions}
+
     for ans in data.answers:
         is_correct = False
-        if ans.selected_option_id:
-            opt = db.query(Option).filter_by(id=ans.selected_option_id, question_id=ans.question_id).first()
+        q = q_map.get(ans.question_id)
+        if q and ans.selected_option_id:
+            opt = next((o for o in q.options if o.id == ans.selected_option_id), None)
             is_correct = bool(opt and opt.is_correct)
+
         if is_correct:
             correct += 1
+
         db.add(AttemptAnswer(
             attempt_id=attempt_id,
             question_id=ans.question_id,
@@ -141,14 +144,13 @@ def finish_test(test_id: int, attempt_id: int, data: FinishIn,
             is_correct=is_correct
         ))
 
-        # To'g'ri va xato javoblarni qaytarish
-        all_opts = db.query(Option).filter_by(question_id=ans.question_id).all()
-        answers_result.append({
-            "question_id": ans.question_id,
-            "selected_option_id": ans.selected_option_id,
-            "is_correct": is_correct,
-            "options": [{"id": o.id, "is_correct": o.is_correct} for o in all_opts]
-        })
+        if q:
+            answers_result.append({
+                "question_id": ans.question_id,
+                "selected_option_id": ans.selected_option_id,
+                "is_correct": is_correct,
+                "options": [{"id": o.id, "is_correct": o.is_correct} for o in q.options]
+            })
 
     attempt.finished_at = datetime.utcnow()
     attempt.score = correct
@@ -162,50 +164,48 @@ def finish_test(test_id: int, attempt_id: int, data: FinishIn,
     }
 
 
-@router.get("/attempt/{attempt_id}/review")
+@router.get("/attempt/{attempt_id}/review", response_model=AttemptReviewOut)
 def review_attempt(attempt_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     attempt = db.query(Attempt).filter_by(id=attempt_id, user_id=user.id).first()
     if not attempt: raise HTTPException(404, "Topilmadi")
 
-    answers = db.query(AttemptAnswer).filter_by(attempt_id=attempt_id).all()
+    # Use joinedload to fetch answers, questions and options in fewer queries
+    answers = db.query(AttemptAnswer).filter_by(attempt_id=attempt_id)\
+        .options(joinedload(AttemptAnswer.attempt))\
+        .all()
+
+    # We need options for each question too.
+    # Fetch questions with options in one go for the answers' question_ids
+    q_ids = [a.question_id for a in answers]
+    questions = db.query(Question).filter(Question.id.in_(q_ids)).options(joinedload(Question.options)).all()
+    q_map = {q.id: q for q in questions}
+
     result = []
     for a in answers:
-        q = db.query(Question).filter_by(id=a.question_id).first()
-        opts = db.query(Option).filter_by(question_id=a.question_id).all()
+        q = q_map.get(a.question_id)
         result.append({
             "question_text": q.question_text if q else "",
             "image_url": q.image_url if q else None,
             "selected_option_id": a.selected_option_id,
             "is_correct": a.is_correct,
-            "options": [{"id": o.id, "text": o.option_text, "is_correct": o.is_correct} for o in opts]
+            "options": [{"id": o.id, "option_text": o.option_text, "is_correct": o.is_correct} for o in q.options] if q else []
         })
+
     return {
         "score": attempt.score,
-        "total": attempt.total_questions,
+        "total_questions": attempt.total_questions,
         "answers": result
     }
 
 
-@router.get("/my-attempts")
+@router.get("/my-attempts", response_model=List[AttemptOut])
 def my_attempts(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    attempts = db.query(Attempt).filter_by(user_id=user.id).order_by(Attempt.started_at.desc()).limit(20).all()
+    attempts = db.query(Attempt).filter_by(user_id=user.id).options(joinedload(Attempt.test))\
+        .order_by(Attempt.started_at.desc()).limit(20).all()
+
     result = []
     for a in attempts:
-        test = db.query(Test).filter_by(id=a.test_id).first()
-        result.append({
-            "id": a.id,
-            "test_title": test.title if test else "",
-            "score": a.score,
-            "total": a.total_questions,
-            "started_at": a.started_at,
-            "finished_at": a.finished_at
-        })
+        # Pydantic's alias and from_attributes will handle this
+        a.test_title = a.test.title if a.test else ""
+        result.append(a)
     return result
-
-
-def _tdict(t: Test):
-    return {
-        "id": t.id, "title": t.title, "description": t.description,
-        "subject_id": t.subject_id, "price": t.price,
-        "duration_minutes": t.duration_minutes, "is_active": t.is_active
-    }

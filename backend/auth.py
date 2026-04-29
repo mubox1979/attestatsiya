@@ -6,6 +6,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from models.database import get_db, User
 import os
+from typing import Dict, Any
 
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecret-change-in-production-2024")
 ALGORITHM = "HS256"
@@ -23,13 +24,13 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_token(data: dict) -> str:
+def create_token(data: Dict[str, Any]) -> str:
     payload = data.copy()
     payload["exp"] = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_token(token: str) -> dict:
+def decode_token(token: str) -> Dict[str, Any]:
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
