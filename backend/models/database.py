@@ -80,6 +80,7 @@ class Question(Base):
     id = Column(Integer, primary_key=True, index=True)
     test_id = Column(Integer, ForeignKey("tests.id"), nullable=False)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
+    is_pedagogy = Column(Boolean, default=False)
     question_text = Column(Text, nullable=False)
     image_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

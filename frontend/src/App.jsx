@@ -83,6 +83,7 @@ function App() {
         id: a.question_id || i,
         text: a.question_text,
         image_url: a.image_url,
+        is_pedagogy: a.is_pedagogy,
         options: a.options.map(o => ({ id: o.id, text: o.text, is_correct: o.is_correct }))
       }));
 
@@ -109,6 +110,7 @@ function App() {
   if (activeTest) {
     return (
       <TestInterface
+        user={user}
         test={activeTest}
         attemptId={attemptId}
         initialQuestions={sessionQuestions}

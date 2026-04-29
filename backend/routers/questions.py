@@ -36,6 +36,7 @@ def create_question(data: QuestionCreate, db: Session = Depends(get_db), editor=
     q = Question(
         test_id=data.test_id,
         category_id=data.category_id,
+        is_pedagogy=data.is_pedagogy,
         question_text=data.question_text,
         image_url=data.image_url
     )
@@ -65,6 +66,7 @@ def update_question(question_id: int, data: QuestionUpdate, db: Session = Depend
     if data.question_text: q.question_text = data.question_text
     if data.image_url is not None: q.image_url = data.image_url
     if data.category_id is not None: q.category_id = data.category_id
+    if data.is_pedagogy is not None: q.is_pedagogy = data.is_pedagogy
     if data.options:
         for o in q.options: db.delete(o)
         db.flush()

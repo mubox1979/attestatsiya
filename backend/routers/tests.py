@@ -24,6 +24,8 @@ def create_test(data: TestCreate, db: Session = Depends(get_db), editor=Depends(
         description=data.description,
         price=data.price,
         duration_minutes=data.duration_minutes,
+        info_count=data.info_count,
+        ped_count=data.ped_count,
         created_by=editor.id
     )
     db.add(t); db.commit(); db.refresh(t)
@@ -75,12 +77,17 @@ def start_test(test_id: int, db: Session = Depends(get_db), user: User = Depends
     if user.balance < test.price:
         raise HTTPException(400, f"Balans yetarli emas. Kerak: {test.price:,.0f} so'm, Sizda: {user.balance:,.0f} so'm")
 
-    all_questions = db.query(Question).filter_by(test_id=test_id).options(joinedload(Question.options)).all()
-    if len(all_questions) == 0:
+    subject_questions = db.query(Question).filter_by(test_id=test_id, is_pedagogy=False).options(joinedload(Question.options)).all()
+    pedagogy_questions = db.query(Question).filter_by(test_id=test_id, is_pedagogy=True).options(joinedload(Question.options)).all()
+
+    if not subject_questions and not pedagogy_questions:
         raise HTTPException(400, "Bu testda savollar yo'q")
 
-    count = min(50, len(all_questions))
-    selected = random.sample(all_questions, count)
+    selected_subject = random.sample(subject_questions, min(test.info_count, len(subject_questions)))
+    selected_pedagogy = random.sample(pedagogy_questions, min(test.ped_count, len(pedagogy_questions)))
+
+    selected = selected_subject + selected_pedagogy
+    count = len(selected)
 
     user.balance -= test.price
     tx = Transaction(user_id=user.id, amount=-test.price, description=f"Test: {test.title}")
@@ -97,6 +104,7 @@ def start_test(test_id: int, db: Session = Depends(get_db), user: User = Depends
             "id": q.id,
             "text": q.question_text,
             "image_url": q.image_url,
+            "is_pedagogy": q.is_pedagogy,
             "options": [{"id": o.id, "text": o.option_text} for o in opts]
         })
 
@@ -186,6 +194,7 @@ def review_attempt(attempt_id: int, db: Session = Depends(get_db), user: User = 
         result.append({
             "question_text": q.question_text if q else "",
             "image_url": q.image_url if q else None,
+            "is_pedagogy": q.is_pedagogy if q else False,
             "selected_option_id": a.selected_option_id,
             "is_correct": a.is_correct,
             "options": [{"id": o.id, "option_text": o.option_text, "is_correct": o.is_correct} for o in q.options] if q else []
