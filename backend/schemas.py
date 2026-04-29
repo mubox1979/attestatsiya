@@ -98,6 +98,7 @@ class QuestionBase(BaseModel):
     question_text: str
     image_url: Optional[str] = None
     category_id: Optional[int] = None
+    is_pedagogy: bool = False
 
 class QuestionCreate(QuestionBase):
     test_id: int
@@ -107,6 +108,7 @@ class QuestionUpdate(BaseModel):
     question_text: Optional[str] = None
     image_url: Optional[str] = None
     category_id: Optional[int] = None
+    is_pedagogy: Optional[bool] = None
     options: Optional[List[OptionIn]] = None
 
 class QuestionOut(QuestionBase):
@@ -118,6 +120,7 @@ class QuestionSimple(BaseModel):
     id: int
     text: str = Field(alias="question_text")
     image_url: Optional[str] = None
+    is_pedagogy: bool = False
     options: List[OptionSimple]
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -132,7 +135,8 @@ class TestCreate(BaseModel):
     title: str
     description: Optional[str] = None
     duration_minutes: int = 120
-    questions_count: int = 50
+    info_count: int = 40
+    ped_count: int = 10
     price: float = 5000.0
 
 class TestOut(TestBase):
@@ -168,6 +172,7 @@ class AttemptOut(BaseModel):
 class AttemptReviewAnswer(BaseModel):
     question_text: str
     image_url: Optional[str] = None
+    is_pedagogy: bool = False
     selected_option_id: Optional[int] = None
     is_correct: Optional[bool] = None
     options: List[OptionOut]

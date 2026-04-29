@@ -10,8 +10,16 @@ const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
   const [formData, setFormData] = useState({
     addQText: '',
     addQImage: '',
+    isPedagogy: false,
     options: ['', '', '', ''],
-    correctOpt: null
+    correctOpt: null,
+    // Test data
+    testTitle: '',
+    testDesc: '',
+    testPrice: 5000,
+    testDuration: 120,
+    testInfoCount: 40,
+    testPedCount: 10
   });
 
   useEffect(() => {
@@ -37,7 +45,7 @@ const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
   };
 
   const handleSubmitQuestion = async () => {
-    const { addQText, addQImage, options, correctOpt } = formData;
+    const { addQText, addQImage, isPedagogy, options, correctOpt } = formData;
     if (!selectedTestId || !addQText || correctOpt === null) return alert('Barcha maydonlarni toʼldiring');
 
     const finalOptions = options.map((txt, i) => ({
@@ -50,17 +58,52 @@ const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
         test_id: parseInt(selectedTestId),
         question_text: addQText,
         image_url: addQImage || null,
+        is_pedagogy: isPedagogy,
         options: finalOptions
       });
       alert('Savol saqlandi');
-      setFormData({ addQText: '', addQImage: '', options: ['', '', '', ''], correctOpt: null });
+      setFormData({ addQText: '', addQImage: '', isPedagogy: false, options: ['', '', '', ''], correctOpt: null });
+    } catch (e) { alert(e.message); }
+  };
+
+  const handleCreateTest = async () => {
+    const { testTitle, testDesc, testPrice, testDuration, testInfoCount, testPedCount } = formData;
+    if (!testTitle) return alert('Test nomini kiriting');
+    try {
+      // Assuming user.subject_id is available if we fetched from current user,
+      // but EditorPanel might not have 'user' prop yet.
+      // Let's check how EditorPanel is called in App.jsx.
+      // App.jsx: <EditorPanel onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />;
+      // It doesn't have user prop. Let's fix that in App.jsx.
     } catch (e) { alert(e.message); }
   };
 
   const menuItems = [
     { id: 'questions', label: 'Savollar', active: activeTab === 'questions', onClick: () => setActiveTab('questions') },
     { id: 'addQuestion', label: '+ Savol qo\'shish', active: activeTab === 'addQuestion', onClick: () => setActiveTab('addQuestion') },
+    { id: 'tests', label: 'Testlarim', active: activeTab === 'tests', onClick: () => setActiveTab('tests') },
+    { id: 'addTest', label: '+ Test yaratish', active: activeTab === 'addTest', onClick: () => setActiveTab('addTest') },
   ];
+
+  const handleCreateTestReal = async () => {
+    const { testTitle, testDesc, testPrice, testDuration, testInfoCount, testPedCount } = formData;
+    if (!testTitle) return alert('Test nomini kiriting');
+    try {
+        const userData = await api('GET', '/auth/me'); // Get subject_id
+        await api('POST', '/tests/', {
+            subject_id: userData.subject_id,
+            title: testTitle,
+            description: testDesc,
+            price: testPrice,
+            duration_minutes: testDuration,
+            info_count: testInfoCount,
+            ped_count: testPedCount
+        });
+        alert('Test yaratildi');
+        setActiveTab('tests');
+        loadEditorData();
+    } catch (e) { alert(e.message); }
+  };
 
   return (
     <div id="pageEditor">
@@ -79,7 +122,10 @@ const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
               {questions.map(q => (
                 <div key={q.id} className="q-item">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div className="q-item-text">{q.question_text}</div>
+                    <div>
+                      <div className="q-item-text">{q.question_text}</div>
+                      {q.is_pedagogy && <span className="badge" style={{ background: '#e2e8f0', color: '#475569', fontSize: '10px' }}>Pedagogika</span>}
+                    </div>
                     <button className="btn btn-danger btn-sm" onClick={async () => { if (confirm('O\'chirish?')) { await api('DELETE', `/questions/${q.id}`); loadEditorQuestions(); } }}>O'chirish</button>
                   </div>
                   <div className="q-options">
@@ -112,6 +158,10 @@ const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
                 <label>Rasm URL</label>
                 <input className="form-input" value={formData.addQImage} onChange={(e) => setFormData({ ...formData, addQImage: e.target.value })} />
               </div>
+              <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input type="checkbox" id="isPedagogy" checked={formData.isPedagogy} onChange={(e) => setFormData({ ...formData, isPedagogy: e.target.checked })} />
+                <label htmlFor="isPedagogy" style={{ marginBottom: 0 }}>Pedagogika savoli</label>
+              </div>
               <div className="card-title">Javoblar</div>
               {formData.options.map((opt, i) => (
                 <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
@@ -124,6 +174,49 @@ const EditorPanel = ({ onLogout, theme, onToggleTheme }) => {
                 </div>
               ))}
               <button className="btn btn-primary btn-full" onClick={handleSubmitQuestion}>✅ Saqlash</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'tests' && (
+          <div id="editorTabTests">
+             <div className="page-title">📚 Mening testlarim</div>
+             <div className="card">
+                <div className="table-wrap">
+                   <table>
+                      <thead><tr><th>Nomi</th><th>Narxi</th><th>Vaqt</th><th>Savollar</th><th>Amallar</th></tr></thead>
+                      <tbody>
+                         {tests.map(t => (
+                           <tr key={t.id}>
+                              <td><strong>{t.title}</strong></td>
+                              <td>{t.price.toLocaleString()} so'm</td>
+                              <td>{t.duration_minutes} daq</td>
+                              <td>{t.question_count} ta</td>
+                              <td><button className="btn btn-danger btn-sm" onClick={async () => { if (confirm('O\'chirish?')) { await api('DELETE', `/tests/${t.id}`); loadEditorData(); } }}>O'chirish</button></td>
+                           </tr>
+                         ))}
+                      </tbody>
+                   </table>
+                </div>
+             </div>
+          </div>
+        )}
+
+        {activeTab === 'addTest' && (
+          <div id="editorTabAddTest">
+            <div className="page-title">➕ Yangi test yaratish</div>
+            <div className="card" style={{ maxWidth: '600px' }}>
+              <div className="form-group"><label>Test nomi</label><input className="form-input" value={formData.testTitle} onChange={(e) => setFormData({...formData, testTitle: e.target.value})} /></div>
+              <div className="form-group"><label>Tavsif</label><textarea className="form-input" rows="2" value={formData.testDesc} onChange={(e) => setFormData({...formData, testDesc: e.target.value})}></textarea></div>
+              <div className="grid-2">
+                 <div className="form-group"><label>Narxi (so'm)</label><input type="number" className="form-input" value={formData.testPrice} onChange={(e) => setFormData({...formData, testPrice: e.target.value})} /></div>
+                 <div className="form-group"><label>Vaqti (daqiqa)</label><input type="number" className="form-input" value={formData.testDuration} onChange={(e) => setFormData({...formData, testDuration: e.target.value})} /></div>
+              </div>
+              <div className="grid-2">
+                 <div className="form-group"><label>Mutaxassislik savollari (ta)</label><input type="number" className="form-input" value={formData.testInfoCount} onChange={(e) => setFormData({...formData, testInfoCount: e.target.value})} /></div>
+                 <div className="form-group"><label>Pedagogika savollari (ta)</label><input type="number" className="form-input" value={formData.testPedCount} onChange={(e) => setFormData({...formData, testPedCount: e.target.value})} /></div>
+              </div>
+              <button className="btn btn-primary btn-full" onClick={handleCreateTestReal}>✅ Yaratish</button>
             </div>
           </div>
         )}
