@@ -11,6 +11,9 @@ const TestInterface = ({ user, test, attemptId, initialQuestions, initialAnswers
   const [finished, setFinished] = useState(initialFinished);
   const [showCalc, setShowCalc] = useState(false);
   const [showFinishModal, setShowFinishModal] = useState(false);
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [complaintText, setComplaintText] = useState('');
+  const [isSubmittingComplaint, setIsSubmittingComplaint] = useState(false);
   const [result, setResult] = useState(null);
 
   const timerRef = useRef(null);
@@ -65,6 +68,25 @@ const TestInterface = ({ user, test, attemptId, initialQuestions, initialAnswers
       setFinished(true);
       setShowFinishModal(false);
     } catch (e) { alert(e.message); }
+  };
+
+  const handleSubmitComplaint = async () => {
+    if (!complaintText.trim()) return;
+    setIsSubmittingComplaint(true);
+    try {
+      await api('POST', '/complaints/', {
+        test_id: test.id,
+        question_id: currentQuestion?.id,
+        text: complaintText
+      });
+      alert('Shikoyatingiz qabul qilindi');
+      setComplaintText('');
+      setShowComplaintModal(false);
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setIsSubmittingComplaint(false);
+    }
   };
 
   const formatTime = (s) => {
@@ -227,7 +249,7 @@ const TestInterface = ({ user, test, attemptId, initialQuestions, initialAnswers
               <span>lyator</span>
            </div>
 
-           <div className="shikoyat-btn">
+           <div className="shikoyat-btn" onClick={() => setShowComplaintModal(true)}>
               <div style={{fontSize: '1.2rem'}}>⚠️ Shikoyat</div>
               <div style={{fontSize: '0.6rem', color: '#94a3b8', marginTop: '4px'}}>Savol bo'yicha shikoyat</div>
            </div>
@@ -261,6 +283,35 @@ const TestInterface = ({ user, test, attemptId, initialQuestions, initialAnswers
         )}
       >
         Haqiqatdan ham testni yakunlamoqchimisiz?
+      </Modal>
+
+      <Modal
+        isOpen={showComplaintModal}
+        onClose={() => setShowComplaintModal(false)}
+        title="Savol bo'yicha shikoyat"
+        footer={(
+          <>
+            <button className="btn" onClick={() => setShowComplaintModal(false)}>Bekor qilish</button>
+            <button
+              className="btn btn-primary"
+              onClick={handleSubmitComplaint}
+              disabled={isSubmittingComplaint || !complaintText.trim()}
+            >
+              {isSubmittingComplaint ? <span className="spinner"></span> : 'Yuborish'}
+            </button>
+          </>
+        )}
+      >
+        <div className="form-group">
+          <label>Savol bo'yicha e'tirozingizni yozing:</label>
+          <textarea
+            className="form-input"
+            rows="4"
+            value={complaintText}
+            onChange={(e) => setComplaintText(e.target.value)}
+            placeholder="Shikoyat matni..."
+          ></textarea>
+        </div>
       </Modal>
 
       <Modal

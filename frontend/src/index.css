@@ -498,18 +498,21 @@ body {
 
 .option-item:hover { background-color: var(--surface-hover); }
 .option-item.selected {
-  border-color: #3b82f6;
-  background-color: #eff6ff;
+  border-color: var(--accent);
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--text);
 }
 
 .option-item.correct-review {
-  background-color: #dcfce7;
-  border-color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.1);
+  border-color: var(--success);
+  color: var(--text);
 }
 
 .option-item.incorrect-review {
-  background-color: #fee2e2;
-  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: var(--danger);
+  color: var(--text);
 }
 
 .option-radio {
