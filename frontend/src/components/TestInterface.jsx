@@ -74,7 +74,7 @@ const TestInterface = ({ user, test, attemptId, initialQuestions, initialAnswers
     if (!complaintText.trim()) return;
     setIsSubmittingComplaint(true);
     try {
-      await api('POST', '/complaints', {
+      await api('POST', '/complaints/', {
         test_id: test.id,
         question_id: currentQuestion?.id,
         text: complaintText

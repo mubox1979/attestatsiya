@@ -81,7 +81,7 @@ function App() {
     try {
       const data = await api('GET', `/tests/attempt/${attemptId}/review`);
       const reviewQuestions = data.answers.map((a, i) => ({
-        id: a.question_id,
+        id: a.question_id || i,
         text: a.question_text || a.text,
         image_url: a.image_url,
         is_pedagogy: a.is_pedagogy,

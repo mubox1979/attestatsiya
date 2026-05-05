@@ -7,7 +7,7 @@ from schemas import ComplaintCreate, ComplaintOut
 
 router = APIRouter(prefix="/complaints", tags=["complaints"])
 
-@router.post("", response_model=ComplaintOut)
+@router.post("/", response_model=ComplaintOut)
 def create_complaint(data: ComplaintCreate, db: Session = Depends(get_db), user = Depends(get_current_user)):
     c = Complaint(
         user_id=user.id,
