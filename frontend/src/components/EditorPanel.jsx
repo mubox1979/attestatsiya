@@ -6,6 +6,7 @@ const EditorPanel = ({ user, onLogout, theme, onToggleTheme }) => {
   const [activeTab, setActiveTab] = useState('questions');
   const [loading, setLoading] = useState(false);
   const [tests, setTests] = useState([]);
+  const [complaints, setComplaints] = useState([]);
   const [selectedTestId, setSelectedTestId] = useState('');
   const [questions, setQuestions] = useState([]);
   const [formData, setFormData] = useState({
@@ -38,6 +39,18 @@ const EditorPanel = ({ user, onLogout, theme, onToggleTheme }) => {
       setTests(data);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
+
+  const loadComplaints = async () => {
+    setLoading(true);
+    try {
+      const data = await api('GET', '/complaints/my-tests');
+      setComplaints(data);
+    } catch (e) { console.error(e); } finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'complaints') loadComplaints();
+  }, [activeTab]);
 
   const loadEditorQuestions = async () => {
     setLoading(true);
@@ -96,6 +109,7 @@ const EditorPanel = ({ user, onLogout, theme, onToggleTheme }) => {
     { id: 'addQuestion', label: '+ Savol qo\'shish', active: activeTab === 'addQuestion', onClick: () => setActiveTab('addQuestion') },
     { id: 'tests', label: 'Testlarim', active: activeTab === 'tests', onClick: () => setActiveTab('tests') },
     { id: 'addTest', label: '+ Test yaratish', active: activeTab === 'addTest', onClick: () => setActiveTab('addTest') },
+    { id: 'complaints', label: 'Shikoyatlar', active: activeTab === 'complaints', onClick: () => setActiveTab('complaints') },
   ];
 
   return (
@@ -117,14 +131,14 @@ const EditorPanel = ({ user, onLogout, theme, onToggleTheme }) => {
                 <div key={q.id} className="q-item">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <div className="q-item-text">{q.question_text}</div>
+                      <div className="q-item-text">{q.question_text || q.text}</div>
                       {q.is_pedagogy && <span className="badge" style={{ background: '#e2e8f0', color: '#475569', fontSize: '10px' }}>Pedagogika</span>}
                     </div>
                     <button className="btn btn-danger btn-sm" onClick={async () => { if (confirm('O\'chirish?')) { await api('DELETE', `/questions/${q.id}`); loadEditorQuestions(); } }}>O'chirish</button>
                   </div>
                   <div className="q-options">
                     {q.options.map((o, idx) => (
-                      <div key={idx} className={`q-option ${o.is_correct ? 'correct' : ''}`}>{o.is_correct ? '✅' : '○'} {o.text}</div>
+                      <div key={idx} className={`q-option ${o.is_correct ? 'correct' : ''}`}>{o.is_correct ? '✅' : '○'} {o.option_text || o.text}</div>
                     ))}
                   </div>
                 </div>
@@ -193,6 +207,42 @@ const EditorPanel = ({ user, onLogout, theme, onToggleTheme }) => {
                    </table>
                 </div>
              </div>
+          </div>
+        )}
+
+        {activeTab === 'complaints' && (
+          <div id="editorTabComplaints">
+            <div className="page-title">⚠️ Savollar bo'yicha shikoyatlar</div>
+            <div className="card">
+              {complaints.length === 0 ? (
+                <p style={{textAlign: 'center', color: 'var(--text-muted)'}}>Shikoyatlar mavjud emas.</p>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Foydalanuvchi</th>
+                        <th>Test</th>
+                        <th>Savol</th>
+                        <th>Shikoyat matni</th>
+                        <th>Sana</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {complaints.map(c => (
+                        <tr key={c.id}>
+                          <td>{c.user_username}</td>
+                          <td>{c.test_title}</td>
+                          <td style={{maxWidth: '200px'}}>{c.question_text || '—'}</td>
+                          <td style={{maxWidth: '300px'}}>{c.text}</td>
+                          <td>{new Date(c.created_at).toLocaleString('uz')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -167,7 +167,7 @@ class AttemptOut(BaseModel):
     id: int
     test_title: str = ""
     score: Optional[float] = None
-    total: Optional[int] = Field(alias="total_questions", default=None)
+    total: Optional[int] = Field(None, validation_alias="total_questions")
     started_at: datetime
     finished_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -181,8 +181,9 @@ class AttemptReviewAnswer(BaseModel):
     options: List[OptionOut]
 
 class AttemptReviewOut(BaseModel):
+    test_id: int = 0
     score: Optional[float] = None
-    total: Optional[int] = Field(alias="total_questions", default=None)
+    total: Optional[int] = Field(None, validation_alias="total_questions")
     answers: List[AttemptReviewAnswer]
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -244,3 +245,17 @@ class FinishOut(BaseModel):
     total: int
     percent: float
     answers: List[FinishAnswerResult]
+
+class ComplaintCreate(BaseModel):
+    test_id: int
+    question_id: Optional[int] = None
+    text: str
+
+class ComplaintOut(BaseModel):
+    id: int
+    user_username: str = Field("", validation_alias=AliasPath("user", "username"))
+    test_title: str = Field("", validation_alias=AliasPath("test", "title"))
+    question_text: Optional[str] = Field(None, validation_alias=AliasPath("question", "question_text"))
+    text: str
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

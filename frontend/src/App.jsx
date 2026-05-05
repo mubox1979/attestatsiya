@@ -81,11 +81,11 @@ function App() {
     try {
       const data = await api('GET', `/tests/attempt/${attemptId}/review`);
       const reviewQuestions = data.answers.map((a, i) => ({
-        id: a.question_id || i,
-        text: a.question_text,
+        id: a.question_id,
+        text: a.question_text || a.text,
         image_url: a.image_url,
         is_pedagogy: a.is_pedagogy,
-        options: a.options.map(o => ({ id: o.id, text: o.text, is_correct: o.is_correct }))
+        options: a.options.map(o => ({ id: o.id, text: o.option_text || o.text, is_correct: o.is_correct }))
       }));
 
       const reviewAnswers = {};
@@ -96,7 +96,7 @@ function App() {
       });
 
       setSessionQuestions(reviewQuestions);
-      setActiveTest({ title: "Javoblarni koʼrish", duration_minutes: 0 });
+      setActiveTest({ id: data.test_id, title: "Javoblarni koʼrish", duration_minutes: 0 });
       setAttemptId(null);
       setTestMode('review');
       // Pass reviewAnswers to TestInterface
