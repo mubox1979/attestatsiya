@@ -63,7 +63,16 @@ const Calculator = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="calc-popup open" id="calcPopup" style={{ display: 'block' }}>
+    <div className="calc-popup open">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-muted)' }}>KALKULYATOR</div>
+        <button
+          onClick={onClose}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--text-muted)' }}
+        >
+          &times;
+        </button>
+      </div>
       <div className="calc-display">
         <div className="calc-expr">{expr}</div>
         <div className="calc-result">{cur}</div>

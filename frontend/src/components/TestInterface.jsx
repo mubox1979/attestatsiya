@@ -168,7 +168,7 @@ const TestInterface = ({ user, test, attemptId, initialQuestions, initialAnswers
             </div>
 
             <div className="question-text-display">
-              {currentQuestion?.text}
+              {currentQuestion?.text || currentQuestion?.question_text}
             </div>
 
             {currentQuestion?.image_url && (
@@ -193,7 +193,7 @@ const TestInterface = ({ user, test, attemptId, initialQuestions, initialAnswers
                     onClick={() => handleSelectOption(opt.id)}
                   >
                     <div className="option-radio"></div>
-                    {opt.text}
+                    {opt.text || opt.option_text}
                   </div>
                 );
               })}
