@@ -117,14 +117,14 @@ const EditorPanel = ({ user, onLogout, theme, onToggleTheme }) => {
                 <div key={q.id} className="q-item">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <div className="q-item-text">{q.question_text}</div>
+                      <div className="q-item-text">{q.question_text || q.text}</div>
                       {q.is_pedagogy && <span className="badge" style={{ background: '#e2e8f0', color: '#475569', fontSize: '10px' }}>Pedagogika</span>}
                     </div>
                     <button className="btn btn-danger btn-sm" onClick={async () => { if (confirm('O\'chirish?')) { await api('DELETE', `/questions/${q.id}`); loadEditorQuestions(); } }}>O'chirish</button>
                   </div>
                   <div className="q-options">
                     {q.options.map((o, idx) => (
-                      <div key={idx} className={`q-option ${o.is_correct ? 'correct' : ''}`}>{o.is_correct ? '✅' : '○'} {o.text}</div>
+                      <div key={idx} className={`q-option ${o.is_correct ? 'correct' : ''}`}>{o.is_correct ? '✅' : '○'} {o.option_text || o.text}</div>
                     ))}
                   </div>
                 </div>

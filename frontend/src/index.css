@@ -316,7 +316,7 @@ body {
 
 /* ===== TEST INTERFACE REDESIGN ===== */
 .test-interface-root {
-  background-color: #eef2f5;
+  background-color: var(--bg);
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -364,8 +364,8 @@ body {
 
 .test-sidebar-left {
   width: 260px;
-  background-color: #eef2f5;
-  border-right: 1px solid #d1d5db;
+  background-color: var(--bg);
+  border-right: 1px solid var(--border);
   padding: 1rem;
   overflow-y: auto;
 }
@@ -433,12 +433,12 @@ body {
 
 .test-content-center {
   flex: 1;
-  background-color: #fff;
+  background-color: var(--surface);
   margin: 1rem;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
 }
 
@@ -475,7 +475,7 @@ body {
   font-size: 1.25rem;
   font-weight: 700;
   margin-bottom: 2rem;
-  color: #1e293b;
+  color: var(--text);
 }
 
 .options-container {
@@ -489,13 +489,14 @@ body {
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.5rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s;
+  color: var(--text);
 }
 
-.option-item:hover { background-color: #f8fafc; }
+.option-item:hover { background-color: var(--surface-hover); }
 .option-item.selected {
   border-color: #3b82f6;
   background-color: #eff6ff;
@@ -537,12 +538,12 @@ body {
 
 .nav-footer {
   height: 64px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 2rem;
-  background-color: #f8fafc;
+  background-color: var(--surface-hover);
 }
 
 .btn-nav {
@@ -568,8 +569,9 @@ body {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  border: 2px solid #000;
-  background: #fff;
+  border: 2px solid var(--text);
+  background: var(--surface);
+  color: var(--text);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -785,4 +787,90 @@ td {
   background-color: #fee2e2;
   color: var(--danger);
   border: 1px solid var(--danger);
+}
+
+/* ===== CALCULATOR ===== */
+.calc-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  background-color: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 1.5rem;
+  z-index: 2000;
+  display: none;
+}
+
+.calc-popup.open {
+  display: block;
+}
+
+.calc-display {
+  background-color: var(--bg);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1.5rem;
+  text-align: right;
+  border: 1px solid var(--border);
+}
+
+.calc-expr {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  height: 1.2rem;
+  margin-bottom: 0.25rem;
+}
+
+.calc-result {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.calc-key {
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calc-key:hover {
+  background-color: var(--surface-hover);
+  transform: translateY(-2px);
+}
+
+.calc-key.op {
+  background-color: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.calc-key.func {
+  background-color: var(--bg);
+  color: var(--text-muted);
+}
+
+.calc-key.zero {
+  grid-column: span 2;
+  aspect-ratio: auto;
 }
