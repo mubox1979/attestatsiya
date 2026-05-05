@@ -135,3 +135,17 @@ class Transaction(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="transactions")
+
+
+class Complaint(Base):
+    __tablename__ = "complaints"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    test_id = Column(Integer, ForeignKey("tests.id"), nullable=False)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=True)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+    test = relationship("Test")
+    question = relationship("Question")
