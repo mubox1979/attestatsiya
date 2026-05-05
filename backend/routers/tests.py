@@ -203,6 +203,7 @@ def review_attempt(attempt_id: int, db: Session = Depends(get_db), user: User = 
         })
 
     return {
+        "test_id": attempt.test_id,
         "score": attempt.score,
         "total_questions": attempt.total_questions,
         "answers": result

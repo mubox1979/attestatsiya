@@ -167,7 +167,7 @@ class AttemptOut(BaseModel):
     id: int
     test_title: str = ""
     score: Optional[float] = None
-    total: Optional[int] = Field(alias="total_questions", default=None)
+    total: Optional[int] = Field(None, validation_alias="total_questions")
     started_at: datetime
     finished_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -181,8 +181,9 @@ class AttemptReviewAnswer(BaseModel):
     options: List[OptionOut]
 
 class AttemptReviewOut(BaseModel):
+    test_id: int = 0
     score: Optional[float] = None
-    total: Optional[int] = Field(alias="total_questions", default=None)
+    total: Optional[int] = Field(None, validation_alias="total_questions")
     answers: List[AttemptReviewAnswer]
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

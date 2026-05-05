@@ -96,7 +96,7 @@ function App() {
       });
 
       setSessionQuestions(reviewQuestions);
-      setActiveTest({ title: "Javoblarni koʼrish", duration_minutes: 0 });
+      setActiveTest({ id: data.test_id, title: "Javoblarni koʼrish", duration_minutes: 0 });
       setAttemptId(null);
       setTestMode('review');
       // Pass reviewAnswers to TestInterface
